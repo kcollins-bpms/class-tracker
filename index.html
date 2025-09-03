@@ -1,0 +1,2184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>i-Ready Diagnostics & Tardies</title>
+<style>
+  :root{
+    /* default (navy) theme */
+    --bg:#0b1b3a;
+    --bg-2:#0f244d;
+    --bg-3:#132b5c;
+    --text:#eef3ff;
+    --muted:#a8b2d1;
+    --accent:#6ea8ff;
+    --neutral:#31406b;
+    --ok:#1e7b34;
+    --bad:#a32323;
+    --card-radius:16px;
+    --shadow:0 6px 24px rgba(0,0,0,.35);
+
+    /* Level colors (bright) */
+    --lvl-dark-green:#0d7a3a;
+    --lvl-green:#22c55e;
+    --lvl-yellow:#facc15;
+    --lvl-red:#ef4444;
+    --lvl-dark-red:#7a1420;
+    --lvl-empty:#2b3a6a;
+
+    /* Buttons / fields */
+    --btn-bg:#20346a;
+    --btn-border:#2e4a94;
+    --chip-border:#3a4e8d;
+
+    /* Theme normalization tokens */
+    --panel-bg:#122554;
+    --panel-border:#2a3f79;
+    --field-bg:#101f46;
+    --menu-bg:linear-gradient(180deg, var(--bg-2), var(--bg-3));
+    --menu-border:#223468;
+
+    --bg-grad1:#15306a;
+    --bg-grad2:var(--bg);
+    --bg-grad3:#061331;
+  }
+
+  /* ---------- THEME VARIANTS ---------- */
+  body[data-theme="navy"]{
+    --bg:#0b1b3a; --bg-2:#0f244d; --bg-3:#132b5c; --text:#eef3ff; --muted:#a8b2d1;
+    --accent:#6ea8ff; --neutral:#31406b; --ok:#1e7b34; --bad:#a32323;
+    --btn-bg:#20346a; --btn-border:#2e4a94; --chip-border:#3a4e8d;
+    --lvl-dark-green:#0d7a3a; --lvl-green:#22c55e; --lvl-yellow:#facc15; --lvl-red:#ef4444; --lvl-dark-red:#7a1420; --lvl-empty:#2b3a6a;
+  }
+  body[data-theme="white"]{
+    --bg:#ffffff; --bg-2:#ffffff; --bg-3:#ffffff; --text:#0b1b3a; --muted:#3b4a78;
+    --accent:#3b82f6; --neutral:#d9e1ff; --ok:#166534; --bad:#b91c1c;
+    --btn-bg:#ffffff; --btn-border:#cfd8ff; --chip-border:#d7e1ff;
+    --lvl-dark-green:#15803d; --lvl-green:#22c55e; --lvl-yellow:#f59e0b; --lvl-red:#ef4444; --lvl-dark-red:#7f1d1d; --lvl-empty:#e6ecff;
+    --panel-bg:#ffffff; --panel-border:#dfe4f7; --field-bg:#ffffff; --menu-bg:#ffffff; --menu-border:#dfe4f7;
+    --bg-grad1:#ffffff; --bg-grad2:#ffffff; --bg-grad3:#ffffff;
+  }
+  body[data-theme="red"]   { --panel-bg:#3a111a; --panel-border:#6b2a36; --field-bg:#4a1b24; }
+  body[data-theme="green"] { --panel-bg:#0f2f22; --panel-border:#235641; --field-bg:#153b2b; }
+  body[data-theme="purple"]{ --panel-bg:#1e1242; --panel-border:#3a2e78; --field-bg:#221652; }
+  body[data-theme="indigo"]{ --panel-bg:#121a53; --panel-border:#314788; --field-bg:#18215f; }
+  body[data-theme="slate"] { --panel-bg:#162032; --panel-border:#2e3f64; --field-bg:#1a2540; }
+  body[data-theme="gold"]  { --panel-bg:#3a3110; --panel-border:#6f5b2b; --field-bg:#403516; }
+  body[data-theme="teal"]  { --panel-bg:#0d3238; --panel-border:#24666e; --field-bg:#123a41; }
+  body[data-theme="orange"]{ --panel-bg:#3a1d0a; --panel-border:#6f482b; --field-bg:#42230e; }
+  body[data-theme="pink"]  { --panel-bg:#3a1129; --panel-border:#6b2a50; --field-bg:#421735; }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    background: radial-gradient(1200px 1200px at 20% -5%, var(--bg-grad1) 0%, var(--bg-grad2) 40%, var(--bg-grad3) 100%);
+    color:var(--text);
+  }
+  .wrap{max-width:1180px;margin:24px auto;padding:0 16px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .title{font-weight:800;letter-spacing:.2px;font-size:clamp(22px,3vw,30px)}
+  .tabsbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  /* App nav */
+  .appnav{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .appnav .tab{
+    background:var(--panel-bg); border:1px solid var(--panel-border); color:var(--text);
+    padding:8px 12px;border-radius:999px;cursor:pointer;
+  }
+  .appnav .tab.active{background:var(--accent);color:#071027;font-weight:800}
+  .appnav .add-tab{ background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--text); padding:8px 12px; border-radius:999px; cursor:pointer; }
+  .appnav .manage-tabs{ background:var(--btn-bg); border:1px solid var(--btn-border); color:var(--text); padding:8px 12px; border-radius:999px; cursor:pointer; }
+
+  /* Class tabs */
+  .class-tab{
+    position:relative; display:flex; align-items:center; gap:8px;
+    background:var(--panel-bg); border:1px solid var(--panel-border); color:var(--text);
+    padding:8px 12px; border-radius:12px; cursor:pointer; user-select:none;
+  }
+  .class-tab.active{ background:var(--accent); color:#071027; font-weight:800; }
+  .class-tab .close{ font-weight:800; opacity:.7; }
+  .class-tab .close:hover{ opacity:1 }
+  .add-class{
+    background:var(--btn-bg); border:1px solid var(--btn-border);
+    padding:8px 12px; border-radius:10px; cursor:pointer; color:var(--text); font-weight:700;
+  }
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+  .btn{
+    background:var(--btn-bg); color:var(--text); border:1px solid var(--btn-border);
+    padding:8px 12px; border-radius:10px; cursor:pointer;
+  }
+  .btn:hover{ filter:brightness(1.06) }
+  .btn.bad{ background:#5b1620; border-color:#912636; color:#ffeef0; }
+  .btn.accent{ background:var(--accent); color:#041222; border-color:#7db4ff; font-weight:700; }
+
+  .search{
+    min-width:220px; padding:8px 12px; border-radius:10px; border:1px solid var(--panel-border); background:var(--field-bg); color:var(--text);
+  }
+  .select{
+    padding:8px 12px; border-radius:10px; border:1px solid var(--panel-border); background:var(--field-bg); color:var(--text);
+  }
+
+  .card{
+    background:var(--menu-bg); border:1px solid var(--menu-border); border-radius:var(--card-radius);
+    padding:16px; box-shadow:var(--shadow); margin-top:12px;
+  }
+  .muted{color:var(--muted); font-size:13px}
+  .divider{height:1px;background:var(--panel-border);margin:8px 0 12px 0;border-radius:999px}
+
+  /* Table */
+  .table{ width:100%; border-collapse:separate; border-spacing:0 8px; }
+  .thead .th{ text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#d6defb; opacity:.9; padding:6px 8px; white-space:nowrap; }
+  .th .sort{ margin-left:6px; cursor:pointer; font-size:12px; opacity:.85; }
+  .th.draggable{ cursor:grab; }
+  .th.draggable:active{ cursor:grabbing; }
+
+  .tr{ background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:12px; overflow:hidden; }
+  .td{ padding:8px; vertical-align:middle; }
+  .name-cell{ padding:10px 12px; font-weight:800; line-height:1.2; cursor:pointer; background:linear-gradient(180deg, #14265a, #10214d); }
+  .name-up{ box-shadow:inset 0 0 0 9999px rgba(30,123,52,.18) }
+  .name-down{ box-shadow:inset 0 0 0 9999px rgba(163,35,35,.18) }
+  .name-same{ box-shadow:inset 0 0 0 9999px rgba(49,64,107,.18) }
+  .name-default{ box-shadow:none; }  /* non-empty to satisfy strict linters */
+
+  .scorebox{ display:flex; align-items:center; gap:6px; flex-wrap:nowrap; }
+  .score-input{
+    width:78px; padding:8px 10px; border-radius:10px; border:1px solid var(--panel-border);
+    background:var(--field-bg); color:var(--text); outline:none;
+  }
+
+  .level-chip, .num-chip{
+    user-select:none; cursor:pointer; min-width:72px; text-align:center;
+    padding:8px 10px; border-radius:10px; border:1px solid var(--chip-border); font-weight:700;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+    white-space:nowrap;
+  }
+  .lvl-dark-green{ background:var(--lvl-dark-green) !important; color:#eaffef; }
+  .lvl-green{ background:var(--lvl-green) !important; color:#07220f; }
+  .lvl-yellow{ background:var(--lvl-yellow) !important; color:#231a00; }
+  .lvl-red{ background:var(--lvl-red) !important; color:#fff3f3; }
+  .lvl-dark-red{ background:var(--lvl-dark-red) !important; color:#ffe3e7; }
+  .lvl-empty{ background:var(--lvl-empty) !important; color:#d6dcff; font-style:normal; }
+
+  .delta{ min-width:74px; text-align:center; font-weight:800; border-radius:10px;
+    padding:8px 10px; border:1px solid var(--panel-border); background:var(--field-bg); }
+  .delta.up{ color:#7dff99; } .delta.down{ color:#ff9a9a; } .delta.zero{ color:#cbd6ff; }
+
+  .goal-cell { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .goal-input{
+    width:86px; padding:8px 10px; border-radius:10px; border:1px solid var(--panel-border);
+    background:var(--field-bg); color:var(--text);
+  }
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-weight:800; font-size:12px;
+    background:#163a24; color:#aaffc5; border:1px solid #2a7a4a;
+  }
+  .badge.stretch{ background:#16243a; color:#b9d6ff; border-color:#2f4f9a; }
+  .badge.met{ background:#1e6a3a; color:#dfffe9; border-color:#2aa35a; }
+
+  .row-actions{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .icon-btn{ background:transparent; border:1px solid var(--panel-border); color:#cfe0ff; padding:6px 8px; border-radius:8px; cursor:pointer; font-size:12px }
+  .icon-btn:hover{ filter:brightness(1.1) }
+
+  /* Level palette */
+  .palette{
+    position:fixed; z-index:1000; background:#0f1e44; border:1px solid #384b8e; border-radius:12px; box-shadow:var(--shadow);
+    padding:6px; display:none; min-width:180px; max-height:min(70vh,360px); overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+  }
+  .palette.open{ display:block; }
+  .palette h5{ margin:6px 8px; font-size:12px; color:#cfe0ff; opacity:.9 }
+  .palette .opt{ padding:6px; cursor:pointer; border-radius:10px; display:block }
+  .palette .opt .level-chip{ width:100%; min-width:auto; }
+
+  /* Tardies */
+  .tardy-row{
+    position:relative;
+    display:grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap:10px; align-items:center;
+    background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:12px; padding:10px 12px;
+  }
+  .tardy-name{ font-weight:800; }
+  .tardy-cluster{
+    position:relative;
+    display:inline-grid;
+    grid-template-columns: auto auto auto;
+    gap:10px; align-items:center;
+  }
+  .tardy-btn{ width:36px; text-align:center; padding:6px 0; }
+  .tardy-count{ width:64px; text-align:center; font-weight:800; background:var(--field-bg); border:1px solid var(--panel-border); border-radius:10px; padding:8px 0; }
+  .note-input{ width:100%; height:36px; padding:8px 10px; border-radius:10px; border:1px solid var(--panel-border); background:var(--field-bg); color:var(--text); }
+
+  .reminder{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 10px; border-radius:999px; border:2px solid #ff7070; color:#ffdede;
+    background:#4a1420; box-shadow:0 0 8px rgba(255,80,80,.7); white-space:nowrap;
+  }
+  .reminder.floating{ position:absolute; right:calc(100% + 8px); top:50%; transform:translateY(-50%); }
+  .reminder .x{ cursor:pointer; font-weight:900; }
+
+  .tardy-list{ display:flex; flex-direction:column; gap:8px }
+
+  /* Settings theme chips */
+  .theme-grid{ display:flex; flex-wrap:wrap; gap:10px }
+  .theme-chip{
+    display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 10px; border-radius:999px;
+    border:1px solid var(--panel-border); background:var(--panel-bg); color:var(--text);
+  }
+  .swatch{ width:18px; height:18px; border-radius:50%; box-shadow:inset 0 0 0 2px rgba(255,255,255,.25); }
+  .theme-chip.active{ outline:2px solid var(--accent); }
+
+  .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background:#0b1735; border:1px solid #2c3f7a; border-radius:6px; padding:2px 6px; font-size:12px; color:#dfe7ff }
+
+  .spacer{flex:1}
+
+  /* ---- Columns gear menu ---- */
+  .gear-wrap{ position:relative; }
+  .gear-btn{ padding:8px 10px; border-radius:10px; border:1px solid var(--btn-border); background:var(--field-bg); color:var(--text); cursor:pointer; }
+  .columns-menu{
+    position:absolute; right:0; top:110%; z-index:55; display:none;
+    background:var(--menu-bg);
+    border:1px solid var(--menu-border); border-radius:12px; padding:10px; box-shadow:var(--shadow);
+    min-width:220px;
+  }
+  .columns-menu.open{ display:block; }
+  .pill-row{ display:flex; gap:8px; flex-wrap:wrap }
+  .pill{
+    padding:6px 10px; border-radius:999px; border:1px solid var(--panel-border); background:var(--panel-bg); color:#cfe0ff; cursor:pointer; user-select:none;
+  }
+  .pill.active{ background:var(--accent); color:#041222; border-color:#7db4ff; font-weight:800; }
+  .columns-hint{ margin-top:8px; font-size:12px; color:var(--muted); }
+
+  /* ---- Modal basics ---- */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:70;
+  }
+  .modal-backdrop.open{ display:flex }
+  .modal{
+    background:var(--menu-bg);
+    border:1px solid var(--menu-border); border-radius:16px; padding:16px; width:min(920px, 96vw); box-shadow:var(--shadow); color:var(--text);
+    max-height:90vh; overflow:auto;
+  }
+  .modal h3{ margin:0 0 10px }
+  .tabs{ display:flex; gap:8px; margin-bottom:10px; position:sticky; top:0; z-index:2; padding-top:6px; background:var(--menu-bg); border-bottom:1px solid var(--menu-border); margin-top:-6px; }
+  .tab-btn{
+    padding:8px 12px; border-radius:999px; background:var(--panel-bg); border:1px solid var(--panel-border); color:#cfe0ff; cursor:pointer;
+  }
+  .tab-btn.active{ background:var(--accent); color:#071027; border-color:#7db4ff; font-weight:800; }
+  .modal-section{ display:none; }
+  .modal-section.active{ display:block; }
+  .modal-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:start; }
+  .field{ display:flex; flex-direction:column; gap:6px }
+  .field label{ font-size:12px; color:#cfe0ff; opacity:.9 }
+  .field input, .field select, .field textarea{
+    padding:8px 10px; border-radius:10px; border:1px solid var(--panel-border); background:var(--field-bg); color:var(--text);
+  }
+  .level-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+  .chart{ width:100%; height:220px; background:var(--field-bg); border:1px solid var(--panel-border); border-radius:10px; display:block; backface-visibility:hidden; transform:translateZ(0); will-change:transform; image-rendering:crisp-edges; }
+
+  /* ---- Manage Tabs / Add Tab ---- */
+  .cols-list{ display:flex; flex-direction:column; gap:8px }
+  .col-item{ display:grid; grid-template-columns: 18px 1fr auto; gap:8px; align-items:center; background:var(--panel-bg); border:1px solid var(--panel-border); padding:8px; border-radius:10px; }
+  .drag{ cursor:grab; user-select:none }
+  .drag:active{ cursor:grabbing }
+  .muted-note{ font-size:12px; color:var(--muted) }
+  .legend{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+  .legend .num-chip{ min-width:auto; padding:4px 8px }
+
+  /* apply panel/field tokens broadly */
+  .compact-card,
+  .tardy-row,
+  .tr { background:var(--panel-bg); border-color:var(--panel-border); }
+  .score-input, .goal-input, .note-input, .search, .select, .tardy-count, .gear-btn { background:var(--field-bg); border-color:var(--panel-border); color:var(--text); }
+  .columns-menu, .palette, .card { background:var(--menu-bg); border-color:var(--menu-border); }
+
+
+  .name-cell{ cursor: default; }
+  .name-cell.clickable{ cursor: pointer; }
+
+  /* Themed scrollbars */
+  * { scrollbar-width: thin; scrollbar-color: var(--btn-border) var(--panel-bg); }
+  ::-webkit-scrollbar{ width:10px; height:10px }
+  ::-webkit-scrollbar-track{ background:var(--panel-bg); border-radius:10px }
+  ::-webkit-scrollbar-thumb{ background:var(--btn-border); border-radius:10px; border:2px solid var(--panel-bg) }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--accent) }
+
+  /* Inline text inputs for custom tabs */
+  .text-cell{ display:flex; align-items:center; gap:8px; max-width:560px }
+  .text-input{ width:100%; min-height:32px; resize:vertical; padding:6px 8px; border-radius:10px; border:1px solid var(--chip-border); background:var(--panel-bg); color:var(--text); font:inherit; }
+  .text-input.has-bg{ color:#041222; }
+  .text-color{ width:28px; height:28px; border-radius:8px; border:1px solid var(--chip-border); padding:0; background:transparent }
+  body[data-theme="white"] .text-input{ background:#fff; color:#0b1b3a; border-color:#cfd8ff }
+
+  /* Palette button and popover */
+  .palette-btn{ 
+    width:28px; height:28px; border-radius:8px; border:1px solid var(--chip-border); 
+    background:linear-gradient(180deg, var(--bg-2), var(--bg-3)); 
+    color:var(--text); display:inline-flex; align-items:center; justify-content:center; 
+    cursor:pointer; padding:0;
+  }
+  .palette-btn:hover{ border-color: var(--accent); }
+  .color-pop{
+    position: fixed; z-index: 9999; display:none;
+    background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
+    border:1px solid var(--btn-border); border-radius:12px; padding:8px; box-shadow: var(--shadow);
+  }
+  body[data-theme="white"] .color-pop{ background:#fff; border-color:#cfd8ff; }
+  .color-row{ display:flex; gap:6px; flex-wrap:wrap; max-width:200px }
+  .color-chip{ width:22px; height:22px; border-radius:6px; border:1px solid var(--chip-border); cursor:pointer; padding:0 }
+  .color-chip.clear{ width:auto; padding:2px 8px; font-size:12px; }
+
+  /* Borderless text inputs & palette button */
+  .text-cell .text-input{ border:none !important; outline:none !important; box-shadow:none !important; }
+  .text-cell .text-input:focus{ border:none !important; outline:none !important; box-shadow:none !important; }
+  .palette-btn{ border:none !important; outline:none !important; box-shadow:none !important; }
+  .palette-btn:hover{ border:none !important; outline:none !important; box-shadow:none !important; }
+  .palette-btn:focus{ border:none !important; outline:none !important; box-shadow:none !important; }
+
+
+  /* Hide palette buttons unless toggled on */
+  .palette-btn{ display:none; }
+  body.show-palette .palette-btn{ display:inline-flex; }
+  /* Subtle focus cue for text inputs */
+  .text-cell .text-input:focus{ box-shadow: inset 0 0 0 1px var(--accent) !important; }
+
+</style>
+</head>
+<body data-theme="navy">
+  <div class="wrap">
+    <header>
+      <div class="title">i-Ready Diagnostics & Tardies</div>
+      <div class="tabsbar" id="tabsbar"></div>
+    </header>
+
+    <div class="appnav" id="appnav">
+      <!-- Screen tabs injected here -->
+    </div>
+
+    <!-- DIAGNOSTICS (built-in) -->
+    <section id="diagnostics" class="card" aria-label="Diagnostics" style="display:none;">
+      <div class="toolbar">
+        <button id="addStudentBtn" class="btn accent">+ Add Student</button>
+        <button id="bulkAddBtn" class="btn">Bulk Add</button>
+
+        <label class="toggle"><span class="muted">Name format:</span>
+          <select id="nameFormat" class="select" title="Name Display">
+            <option value="firstLast">First Last</option>
+            <option value="lastFirst">Last, First</option>
+          </select>
+        </label>
+
+        <label class="toggle" title="Show Spring (6th)">
+          <input id="toggleSpring6" type="checkbox" />
+          <span class="muted">Spring (6th)</span>
+        </label>
+
+        <input id="searchBox" class="search" placeholder="Search students  ( / )" />
+        <div class="spacer"></div>
+
+        <!-- Columns Gear -->
+        <div class="gear-wrap">
+          <button id="columnsBtn" class="gear-btn" title="Columns (g)">⚙ Columns</button>
+          <div id="columnsMenu" class="columns-menu" role="dialog" aria-label="Columns">
+            <div class="pill-row">
+              <div class="pill" data-col="fall">Fall</div>
+              <div class="pill" data-col="winter">Winter</div>
+              <div class="pill" data-col="spring">Spring</div>
+            </div>
+            <div class="columns-hint">Shortcuts: <span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span> • <span class="kbd">g</span> to open/close</div>
+          </div>
+        </div>
+
+        <button id="shortcutsBtn" class="btn">Shortcuts</button>
+      </div>
+      <div class="divider"></div>
+
+      <div id="fullView">
+        <table class="table">
+          <thead class="thead">
+            <tr class="tr">
+              <th class="th">Student <span class="sort" data-sort="name">↕</span></th>
+
+              <th class="th spring6col">Spring (6th) <span class="sort" data-sort="spring6">↕</span></th>
+              <th class="th spring6col">Δ 6th→F <span class="sort" data-sort="delta_s6">↕</span></th>
+
+              <th class="th th-fall">Fall <span class="sort" data-sort="fall">↕</span></th>
+              <th class="th th-dfw">Δ→W <span class="sort" data-sort="delta_fw">↕</span></th>
+
+              <th class="th th-winter">Winter <span class="sort" data-sort="winter">↕</span></th>
+              <th class="th th-dws">Δ→S <span class="sort" data-sort="delta_ws">↕</span></th>
+
+              <th class="th th-spring">Spring <span class="sort" data-sort="spring">↕</span></th>
+
+              <th class="th">Typical <span class="sort" data-sort="typical">↕</span></th>
+              <th class="th">Stretch <span class="sort" data-sort="stretch">↕</span></th>
+              <th class="th">Growth needed <span class="sort" data-sort="growth">↕</span></th>
+
+              <th class="th col-actions">
+                <button id="toggleRemove" class="icon-btn actions-toggle" title="Show remove buttons">Remove…</button>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="studentsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="muted" style="margin-top:8px">Tip: Press <span class="kbd">Enter</span> or click away to save a score. Use <span class="kbd">←</span>/<span class="kbd">→</span> to move between inputs.</div>
+    </section>
+
+    <!-- TARDIES (built-in) -->
+    <section id="tardies" class="card" aria-label="Tardies" style="display:none;">
+      <div class="toolbar">
+        <button id="resetTardies" class="btn bad">Reset Tardies (this class)</button>
+        <label class="toggle"><span class="muted">Name format:</span>
+          <select id="nameFormat2" class="select" title="Name Display">
+            <option value="firstLast">First Last</option>
+            <option value="lastFirst">Last, First</option>
+          </select>
+        </label>
+        <div class="spacer"></div>
+        <input id="tardySearch" class="search" placeholder="Search students" />
+        <button id="shortcutsBtn2" class="btn">Shortcuts</button>
+      </div>
+      <div class="divider"></div>
+      <div class="tardy-list" id="tardyList"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="card" aria-label="Settings" style="display:none;">
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <h3 style="margin:0">Settings</h3>
+        <div class="spacer"></div>
+        <button id="manageTabsBtn" class="btn">Manage Tabs</button>
+      </div>
+      <div class="divider"></div>
+
+      <div style="margin-bottom:8px;" class="muted">Theme</div>
+      <div class="theme-grid" id="themeGrid"></div>
+      <p class="muted" style="margin-top:10px">Click a chip to switch themes. Navy is the default.</p>
+    </section>
+  </div>
+
+  <!-- Bulk Add Modal -->
+  <div id="bulkModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Bulk Add Students">
+      <h3>Bulk Add Students</h3>
+      <p class="muted">Paste one name per line. Accepts “First Last” or “Last, First”.</p>
+      <textarea id="bulkTextarea" class="search" style="width:100%;min-height:160px" placeholder="e.g.
+Hermione Granger
+Potter, Harry
+Weasley, Ron"></textarea>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="bulkPreviewBtn" class="btn">Preview</button>
+        <button id="bulkCancelBtn" class="btn bad">Cancel</button>
+        <div class="spacer"></div>
+        <button id="bulkConfirmBtn" class="btn accent">Add Students</button>
+      </div>
+      <div id="bulkPreview" class="preview-list" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px"></div>
+    </div>
+  </div>
+
+  <!-- Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard Shortcuts">
+      <h3>Keyboard Shortcuts</h3>
+      <div class="divider"></div>
+      <ul>
+        <li><span class="kbd">/</span> Focus search (diagnostics/tardies/custom tabs)</li>
+        <li><span class="kbd">d</span> Diagnostics screen</li>
+        <li><span class="kbd">t</span> Tardies screen</li>
+        <li><span class="kbd">s</span> Toggle Spring (6th) on Diagnostics</li>
+        <li><span class="kbd">1</span>/<span class="kbd">2</span>/<span class="kbd">3</span> Toggle Fall/Winter/Spring columns (Diagnostics)</li>
+        <li><span class="kbd">n</span> Add Student (Diagnostics)</li>
+        <li><span class="kbd">b</span> Bulk Add (Diagnostics)</li>
+        <li><span class="kbd">?</span> Shortcuts help</li>
+        <li><span class="kbd">Enter</span> Save input</li>
+        <li><span class="kbd">←</span>/<span class="kbd">→</span> Move between score inputs</li>
+      </ul>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <div class="spacer"></div>
+        <button id="shortcutsClose" class="btn accent">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Modal -->
+  <div id="studentModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Student Detail">
+      <h3 id="stuTitle">Student</h3>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="ov">Overview</button>
+        <button class="tab-btn" data-tab="ch">Charts</button>
+        <div class="spacer"></div>
+        <button id="stuClose" class="btn accent">Close</button>
+      </div>
+
+      <!-- Overview -->
+      <div id="tab-ov" class="modal-section active">
+        <div class="modal-grid">
+          <div class="field">
+            <label>Typical goal</label>
+            <input id="mTypical" type="number" inputmode="numeric" placeholder="e.g., 540" />
+          </div>
+          <div class="field">
+            <label>Stretch goal</label>
+            <input id="mStretch" type="number" inputmode="numeric" placeholder="e.g., 560" />
+          </div>
+
+          <!-- Scores + levels -->
+          <div class="field">
+            <label>Fall</label>
+            <div class="level-row">
+              <input id="mFallScore" class="score-input" type="number" inputmode="numeric" placeholder="Fall" />
+              <div id="mFallLevel" class="level-chip lvl-empty">-</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Winter</label>
+            <div class="level-row">
+              <input id="mWinterScore" class="score-input" type="number" inputmode="numeric" placeholder="Winter" />
+              <div id="mWinterLevel" class="level-chip lvl-empty">-</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Spring</label>
+            <div class="level-row">
+              <input id="mSpringScore" class="score-input" type="number" inputmode="numeric" placeholder="Spring" />
+              <div id="mSpringLevel" class="level-chip lvl-empty">-</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Spring (6th)</label>
+            <div class="level-row">
+              <input id="mSpring6Score" class="score-input" type="number" inputmode="numeric" placeholder="Spring (6th)" />
+              <div id="mSpring6Level" class="level-chip lvl-empty">-</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Growth needed</label>
+            <div id="mGrowth" class="goal-cell"></div>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <div id="mStatus" class="goal-cell"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div id="tab-ch" class="modal-section">
+        <div class="field">
+          <label>Score progression</label>
+          <canvas id="chartProgress" class="chart" width="800" height="220"></canvas>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>Delta bars</label>
+          <canvas id="chartDeltas" class="chart" width="800" height="220"></canvas>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>Reading level timeline</label>
+          <canvas id="chartLevels" class="chart" width="800" height="120"></canvas>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>Goal gap sparkline</label>
+          <canvas id="chartGap" class="chart" width="800" height="120"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Tabs Modal -->
+  <div id="manageTabsModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Manage Tabs">
+      <h3>Manage Tabs</h3>
+      <div class="divider"></div>
+      <p class="muted">Show/hide tabs and delete custom tabs.</p>
+      <div id="manageTabsList" class="cols-list"></div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button id="closeManageTabs" class="btn accent">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Custom Tab Builder Modal -->
+  <div id="tabBuilderModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Custom Tab Builder">
+      <h3 id="tbTitle">New Custom Tab</h3>
+      <div class="divider"></div>
+
+      <div class="field">
+        <label>Tab name</label>
+        <input id="tbName" placeholder="e.g., Benchmarks" />
+      </div>
+
+      <div class="divider"></div>
+      <h4 style="margin:8px 0">Columns</h4>
+      <div class="muted-note">Add numeric or text columns. Drag to reorder. Numeric columns can show a color chip based on ranges.</div>
+      <div style="display:flex; gap:8px; margin:8px 0;">
+        <button id="tbAddNum" class="btn">+ Add Numeric</button>
+        <button id="tbAddTxt" class="btn">+ Add Text</button>
+      </div>
+      <div id="tbCols" class="cols-list"></div>
+
+      <div class="divider"></div>
+      <div class="legend">
+        <span class="muted">Legend:</span>
+        <span class="num-chip lvl-green">Green</span>
+        <span class="num-chip lvl-yellow">Yellow</span>
+        <span class="num-chip lvl-red">Red</span>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button id="tbCancel" class="btn bad">Cancel</button>
+        <div class="spacer"></div>
+        <button id="tbSave" class="btn accent">Save Tab</button>
+      </div>
+    </div>
+  </div>
+<script>
+/* ===================== State & Storage ===================== */
+const STORAGE_KEY = "iready_tardy_app_v4";
+/* Keys we’ll look at and pick the fullest dataset from (your old file used "iready_tardy_app") */
+const MIGRATION_KEYS = [
+  "iready_tardy_app",        // old stable key in your previous file
+  "iready_tardy_app_v3",
+  "iready_tardy_app_v2",
+  "iready_tardy_app_v1"
+];
+
+const DEFAULT_DATA = {
+  classes: [
+    { id: crypto.randomUUID(), name: "Period 1", students: [], columns:{fall:true,winter:true,spring:true} },
+    { id: crypto.randomUUID(), name: "Period 2", students: [], columns:{fall:true,winter:true,spring:true} },
+    { id: crypto.randomUUID(), name: "Period 3", students: [], columns:{fall:true,winter:true,spring:true} },
+  ],
+  activeClassId: null,
+  activeScreen: "diagnostics",
+  showSpring6: false,
+  nameFormat: "firstLast",
+  sort: { key:"name", dir:1 },
+  search: "",
+  theme: "navy",
+  showRemove: false,
+  customTabs: [],
+  tabsVisibility: { diagnostics:true, tardies:true },
+  customSort: {},
+  _lastSavedAt: Date.now()
+};
+
+function safeParse(raw){ try{ return JSON.parse(raw); }catch{ return null; } }
+function looksLikeAppState(obj){ return obj && Array.isArray(obj.classes); }
+function countStudents(obj){
+  if(!looksLikeAppState(obj)) return 0;
+  return (obj.classes||[]).reduce((sum,c)=> sum + (c.students?.length||0), 0);
+}
+
+function ensureLevel(entry){
+  const e = entry || {};
+  return { score: e.score ?? null, level: (e.level ?? ""), levelColor: (e.levelColor ?? "") };
+}
+function ensureStudent(st){
+  const s = st || {};
+  s.id ??= crypto.randomUUID();
+  s.name ??= "";
+  s.first ??= s.first;
+  s.last ??= s.last;
+  s.fall   = ensureLevel(s.fall);
+  s.winter = ensureLevel(s.winter);
+  s.spring = ensureLevel(s.spring);
+  s.spring6= ensureLevel(s.spring6);
+  s.typicalGoal ??= null;
+  s.stretchGoal ??= null;
+  s.tardies ??= 0;
+  s.note ??= "";
+  s.dismissedAtCount ??= null;
+  s.customData ??= {};
+  return s;
+}
+function ensureClass(c){
+  c.id ??= crypto.randomUUID();
+  c.name ??= "Period _";
+  c.columns ??= {fall:true,winter:true,spring:true};
+  c.students = Array.isArray(c.students) ? c.students.map(ensureStudent) : [];
+  return c;
+}
+function ensureState(state){
+  const s = state || {};
+  s.classes = Array.isArray(s.classes) && s.classes.length ? s.classes.map(ensureClass) : DEFAULT_DATA.classes.map(ensureClass);
+  s.activeClassId ??= s.classes[0]?.id || null;
+  if(!s.classes.some(c=>c.id===s.activeClassId)) s.activeClassId = s.classes[0]?.id || null;
+  s.activeScreen ??= "diagnostics";
+  s.showSpring6 ??= false;
+  s.nameFormat ??= "firstLast";
+  s.sort ??= { key:"name", dir:1 };
+  s.search ??= "";
+  s.theme ??= "navy";
+  s.showRemove ??= false;
+  s.customTabs ??= [];
+  s.tabsVisibility ??= { diagnostics:true, tardies:true };
+  s.customSort ??= {};
+  s._lastSavedAt ??= Date.now();
+  return s;
+}
+
+/* Migration-aware loader:
+   - Compare current v4 bucket and all MIGRATION_KEYS.
+   - Pick the one with the most students (tie-breaker: newest _lastSavedAt).
+   - Store that into v4 and use it. */
+function load(){
+  // Candidate: current v4 (if any)
+  const curRaw = localStorage.getItem(STORAGE_KEY);
+  const cur = safeParse(curRaw);
+  let best = looksLikeAppState(cur) ? cur : null;
+  let bestKey = looksLikeAppState(cur) ? STORAGE_KEY : null;
+  let bestCount = countStudents(best);
+  let bestTime = (best && best._lastSavedAt) || 0;
+
+  // Check legacy keys
+  MIGRATION_KEYS.forEach(k=>{
+    const raw = localStorage.getItem(k);
+    const obj = safeParse(raw);
+    if(!looksLikeAppState(obj)) return;
+    const cnt = countStudents(obj);
+    const ts = obj._lastSavedAt || 0;
+    // Prefer more students; if equal, prefer newer timestamp
+    if(cnt > bestCount || (cnt===bestCount && ts > bestTime)){
+      best = obj; bestKey = k; bestCount = cnt; bestTime = ts;
+    }
+  });
+
+  if(!best){
+    // Nothing usable anywhere → initialize defaults
+    const init = ensureState(DEFAULT_DATA);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(init));
+    return init;
+  }
+
+  // Normalize and write to STORAGE_KEY if not already there or if v4 is emptier
+  const normalized = ensureState(best);
+  if(bestKey !== STORAGE_KEY){
+    normalized._lastSavedAt = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  }else{
+    // Even if already v4, ensure shape is normalized
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+  }
+  return normalized;
+}
+
+function save(){
+  state._lastSavedAt = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = load();
+
+/* ===================== DOM Helpers ===================== */
+const qs = (sel, el=document)=>el.querySelector(sel);
+const qsa = (sel, el=document)=>Array.from(el.querySelectorAll(sel));
+function getActiveClass(){ return state.classes.find(c=>c.id===state.activeClassId) || state.classes[0]; }
+function keepScroll(fn){ const y=scrollY, x=scrollX; fn(); scrollTo(x,y); }
+
+/* ===================== Name/Levels Helpers ===================== */
+function inferColorFromText(label){
+  const t = (label||"").trim();
+  if(t==="8"||t==="Mid 7"||t==="Late 7") return "lvl-dark-green";
+  if(t==="Early 7") return "lvl-green";
+  if(t==="6") return "lvl-yellow";
+  if(t==="5") return "lvl-red";
+  if(["4","3","2","1","K"].includes(t)) return "lvl-dark-red";
+  return "";
+}
+function classForEntry(entry){
+  if(entry?.levelColor) return entry.levelColor;
+  return inferColorFromText(entry?.level);
+}
+function fmtName(s){
+  const first = s.first || "", last = s.last || "";
+  if(state.nameFormat==="lastFirst"){
+    if(first && last) return `${last}, ${first}`;
+    if((s.name||"").includes(",")) return s.name.trim();
+  }
+  if(first && last) return `${first} ${last}`;
+  return (s.name||"").replace(/\s+/g," ").trim();
+}
+function parseName(line){
+  if(!line || !line.trim()) return null;
+  const t=line.trim();
+  if(t.includes(",")){
+    const [last, first] = t.split(",").map(s=>s.trim());
+    return { first, last, name:`${first} ${last}`.trim() };
+  }else{
+    const parts=t.split(/\s+/);
+    if(parts.length>=2){
+      const first=parts.slice(0,-1).join(" "), last=parts.at(-1);
+      return { first, last, name:`${first} ${last}`.trim() };
+    }
+    return { name:t };
+  }
+}
+
+/* ===================== Deltas & Goals ===================== */
+function deltaBetween(stu, a, b){
+  const x = stu[a]?.score, y = stu[b]?.score;
+  if(x==null || y==null) return null;
+  const nx = Number(x), ny = Number(y);
+  if(Number.isNaN(nx)||Number.isNaN(ny)) return null;
+  return { from:nx, to:ny, delta: ny - nx };
+}
+function nameStateClass(stu){
+  // prefer latest visible delta: Spring6 vs Fall (shown near Spring6), else Winter→Spring, else Fall→Winter
+  const cls = getActiveClass(), v = cls.columns;
+  let d = null;
+  if(state.showSpring6) d = deltaBetween(stu,"spring","spring6");
+  if(!d && v.winter && v.spring) d = deltaBetween(stu,"winter","spring");
+  if(!d && v.fall && v.winter) d = deltaBetween(stu,"fall","winter");
+  if(!d) return "name-default";
+  if(d.delta>0) return "name-up";
+  if(d.delta<0) return "name-down";
+  return "name-same";
+}
+function latestVisibleKey(stu){
+  const v = getActiveClass().columns;
+  if(state.showSpring6 && stu.spring6?.score!=null) return "spring6";
+  if(v.spring && stu.spring?.score!=null) return "spring";
+  if(v.winter && stu.winter?.score!=null) return "winter";
+  if(v.fall && stu.fall?.score!=null) return "fall";
+  return null;
+}
+function growthNeeded(stu){
+  const key = latestVisibleKey(stu);
+  if(!key || key==="spring6") return {t:null,s:null};
+  const cur = stu[key]?.score ?? null;
+  const t = (stu.typicalGoal!=null && cur!=null) ? Math.max(0, Math.round(stu.typicalGoal - cur)) : null;
+  const s = (stu.stretchGoal!=null && cur!=null) ? Math.max(0, Math.round(stu.stretchGoal - cur)) : null;
+  return {t,s};
+}
+function metStatus(stu){
+  // Only mark as met when latest among Winter/Spring is entered
+  const key = latestVisibleKey(stu);
+  if(!key || (key!=="winter" && key!=="spring")) return {t:false,s:false};
+  const cur = stu[key]?.score ?? null;
+  return {
+    t: (cur!=null && stu.typicalGoal!=null && cur>=stu.typicalGoal),
+    s: (cur!=null && stu.stretchGoal!=null && cur>=stu.stretchGoal)
+  };
+}
+
+/* ===================== Class Tabs ===================== */
+const tabsbar = qs("#tabsbar");
+function renderClassTabs(){
+  tabsbar.innerHTML = "";
+  state.classes.forEach((c, idx)=>{
+    const el = document.createElement("div");
+    el.className = "class-tab" + (c.id===state.activeClassId ? " active" : "");
+    const label = document.createElement("span"); label.textContent = c.name || `Period ${idx+1}`;
+    const close = document.createElement("span"); close.className="close"; close.textContent="×";
+    close.title = "Delete class";
+    close.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      if(state.classes.length<=1){ alert("You need at least one class."); return; }
+      if(!confirm(`Delete class "${c.name}" and all its students?`)) return;
+      const i = state.classes.findIndex(x=>x.id===c.id);
+      state.classes.splice(i,1);
+      state.activeClassId = state.classes[0]?.id || null;
+      save(); renderAll();
+    });
+    el.addEventListener("click", ()=>{
+      state.activeClassId = c.id; save(); renderAll();
+    });
+    el.addEventListener("dblclick", ()=>{
+      const name = prompt("Rename class:", c.name || `Period ${idx+1}`);
+      if(name){ c.name = name.trim() || c.name; save(); renderClassTabs(); }
+    });
+    el.append(label, close);
+    tabsbar.appendChild(el);
+  });
+  const add = document.createElement("button");
+  add.textContent = "+ Add Class";
+  add.className = "add-class";
+  add.addEventListener("click", ()=>{
+    const name = prompt("Class name:", `Period ${state.classes.length+1}`) || `Period ${state.classes.length+1}`;
+    state.classes.push({ id:crypto.randomUUID(), name:name.trim(), students:[], columns:{fall:true,winter:true,spring:true} });
+    state.activeClassId = state.classes.at(-1).id;
+    save(); renderAll();
+  });
+  tabsbar.appendChild(add);
+}
+
+/* ===================== App Nav ===================== */
+const appnav = qs("#appnav");
+function appTab(label, key){
+  const b = document.createElement("button");
+  b.className = "tab" + (state.activeScreen===key ? " active" : "");
+  b.dataset.screen = key; b._screenKey = key;
+  b.textContent = label;
+  b.addEventListener("click", ()=>{ state.activeScreen=key; save(); applyScreen(); });
+  return b;
+}
+function renderAppNav(){
+  appnav.innerHTML = "";
+  if(state.tabsVisibility.diagnostics) appnav.appendChild(appTab("Diagnostics","diagnostics"));
+  if(state.tabsVisibility.tardies) appnav.appendChild(appTab("Tardies","tardies"));
+  // custom tabs
+  state.customTabs.forEach(t=>{
+    if(!t.visible) return;
+    const key = "custom:"+t.id;
+    appnav.appendChild(appTab(t.name, key));
+  });
+
+  const spacer = document.createElement("div"); spacer.className="spacer"; appnav.appendChild(spacer);
+
+  const addTab = document.createElement("button"); addTab.className="add-tab"; addTab.textContent="+ Add Tab";
+  addTab.addEventListener("click", ()=>openTabBuilder());
+  appnav.appendChild(addTab);
+
+  const manage = document.createElement("button"); manage.className="manage-tabs"; manage.textContent="Manage Tabs";
+  manage.addEventListener("click", ()=>openManageTabs());
+  appnav.appendChild(manage);
+
+  appnav.appendChild(appTab("Settings","settings"));
+}
+
+/* ===================== Screen Switch ===================== */
+function hideAllScreens(){
+  qs("#diagnostics").style.display="none";
+  qs("#tardies").style.display="none";
+  qs("#settings").style.display="none";
+  qsa("[data-custom-host]").forEach(el=> el.style.display="none");
+}
+
+function updateActiveNav(){
+  qsa(".appnav .tab").forEach(btn=>{
+    const key = btn._screenKey || btn.dataset.screen || btn.textContent.trim().toLowerCase();
+    btn.classList.toggle("active", key===state.activeScreen);
+  });
+}
+function applyScreen(){
+  hideAllScreens();
+  const k = state.activeScreen;
+  if(k==="diagnostics"){ qs("#diagnostics").style.display=""; renderDiagnostics(); updateActiveNav(); return; }
+  if(k==="tardies"){ qs("#tardies").style.display=""; renderTardies(); updateActiveNav(); return; }
+  if(k==="settings"){ qs("#settings").style.display=""; renderThemeChips(); updateActiveNav(); return; }
+  if(k.startsWith("custom:")){ renderCustomTab(k.split(":")[1]); updateActiveNav(); return; }
+}
+
+/* ===================== Level Palette ===================== */
+let paletteEl = null;
+function ensurePalette(){
+  if(paletteEl) return paletteEl;
+  const p = document.createElement("div");
+  p.className = "palette";
+  p.innerHTML = `
+    <h5>Presets</h5>
+    <div class="opt"><div class="level-chip lvl-empty">-</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-green">8</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-green">Late 7</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-green">Mid 7</div></div>
+    <div class="opt"><div class="level-chip lvl-green">Early 7</div></div>
+    <div class="opt"><div class="level-chip lvl-yellow">6</div></div>
+    <div class="opt"><div class="level-chip lvl-red">5</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-red">4</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-red">3</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-red">2</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-red">1</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-red">K</div></div>
+    <h5>Custom (blank → type)</h5>
+    <div class="opt"><div class="level-chip lvl-dark-green">&nbsp;</div></div>
+    <div class="opt"><div class="level-chip lvl-green">&nbsp;</div></div>
+    <div class="opt"><div class="level-chip lvl-yellow">&nbsp;</div></div>
+    <div class="opt"><div class="level-chip lvl-red">&nbsp;</div></div>
+    <div class="opt"><div class="level-chip lvl-dark-red">&nbsp;</div></div>
+  `;
+  p.addEventListener("click", (e)=>{
+    const chip = e.target.closest(".level-chip");
+    if(!chip) return;
+    const label = chip.textContent.trim() || "";
+    const cls = Array.from(chip.classList).find(c=>c.startsWith("lvl-")) || "";
+    if(p.onselect){
+      if(label==="-"){ p.onselect({label:"-", colorClass:""}); }
+      else if(label===""){ p.onselect({label:"", colorClass:cls, custom:true}); }
+      else{ p.onselect({label, colorClass:cls}); }
+    }
+    closePalette();
+  });
+  document.body.appendChild(p);
+  paletteEl = p;
+  return p;
+}
+function openPaletteAt(anchor, onselect){
+  const p = ensurePalette();
+  p.onselect = onselect;
+  p.classList.add("open");
+
+  const r = anchor.getBoundingClientRect();
+  const margin = 8;
+  const pw = p.offsetWidth || 180;
+  const ph = p.offsetHeight || 220;
+
+  let left = r.left;
+  let top = r.top; // align top to anchor top
+
+  if(left + pw > innerWidth - margin) left = Math.max(margin, innerWidth - pw - margin);
+  if(left < margin) left = margin;
+
+  const maxTop = innerHeight - margin - ph;
+  if(top > maxTop) top = Math.max(margin, maxTop);
+  if(top < margin) top = margin;
+
+  p.style.left = `${left}px`;
+  p.style.top  = `${top}px`;
+
+  const handler = (ev)=>{
+    if(!p.contains(ev.target) && ev.target!==anchor){
+      closePalette();
+      document.removeEventListener("mousedown", handler);
+    }
+  };
+  document.addEventListener("mousedown", handler);
+}
+function closePalette(){ if(paletteEl) paletteEl.classList.remove("open"); }
+
+/* ===================== Diagnostics ===================== */
+const studentsBody = qs("#studentsBody");
+
+function renderDiagnostics(){
+  const cls = getActiveClass();
+  // toolbar / tokens
+  document.body.setAttribute("data-theme", state.theme || "navy");
+  qs("#toggleSpring6").checked = !!state.showSpring6;
+  qs("#nameFormat").value = state.nameFormat;
+  qs("#searchBox").value = state.search || "";
+
+  const removeHdrBtn = qs("#toggleRemove");
+  if(removeHdrBtn) removeHdrBtn.textContent = state.showRemove ? "Done" : "Remove…";
+
+  // spring6 header visibility
+  qsa(".spring6col").forEach(el=> el.style.display = state.showSpring6 ? "" : "none");
+
+  // Column pills
+  const v = cls.columns || (cls.columns={fall:true,winter:true,spring:true});
+  const menu = qs("#columnsMenu");
+  menu.querySelectorAll(".pill").forEach(p=>{
+    const key = p.dataset.col;
+    p.classList.toggle("active", !!v[key]);
+  });
+
+  const list = [...cls.students];
+
+  // search
+  const query = (state.search||"").toLowerCase().trim();
+  const filtered = query ? list.filter(s => fmtName(s).toLowerCase().includes(query)) : list;
+
+  // sort
+  const {key, dir} = state.sort || {key:"name", dir:1};
+  filtered.sort((a,b)=>{
+    const map = (stu)=>{
+      switch(key){
+        case "name": return fmtName(stu).toLowerCase();
+        case "fall": case "winter": case "spring": case "spring6":
+          return stu[key]?.score ?? -Infinity;
+        case "delta_fw": return (v.fall && v.winter) ? (deltaBetween(stu,"fall","winter")?.delta ?? -Infinity) : -Infinity;
+        case "delta_ws": return (v.winter && v.spring) ? (deltaBetween(stu,"winter","spring")?.delta ?? -Infinity) : -Infinity;
+        case "delta_s6": return (deltaBetween(stu,"spring6","fall")?.delta ?? -Infinity);
+        case "typical": return (stu.typicalGoal ?? -Infinity);
+        case "stretch": return (stu.stretchGoal ?? -Infinity);
+        case "growth":
+          const g = growthNeeded(stu);
+          const t = (g.t==null?Infinity:g.t), s=(g.s==null?Infinity:g.s);
+          return t + s;
+        default: return 0;
+      }
+    };
+    const va=map(a), vb=map(b);
+    if(va<vb) return -1*dir;
+    if(va>vb) return 1*dir;
+    return 0;
+  });
+
+  // header visibility
+  const showFall = !!v.fall, showWinter=!!v.winter, showSpring=!!v.spring;
+  qs(".th-fall").style.display   = showFall ? "" : "none";
+  qs(".th-winter").style.display = showWinter ? "" : "none";
+  qs(".th-spring").style.display = showSpring ? "" : "none";
+  qs(".th-dfw").style.display    = (showFall && showWinter) ? "" : "none";
+  qs(".th-dws").style.display    = (showWinter && showSpring) ? "" : "none";
+
+  // rows
+  studentsBody.innerHTML = "";
+  for(const s of filtered){
+    const tr = document.createElement("tr"); tr.className="tr";
+
+    // Name
+    const tdName = document.createElement("td");
+    tdName.className = `td name-cell ${nameStateClass(s)}`;
+    const nameWrap = document.createElement("div"); nameWrap.className="name-wrap"; nameWrap.textContent = fmtName(s);
+    tdName.appendChild(nameWrap);
+    tdName.addEventListener("click", ()=>openStudentModal(s.id));
+    tr.appendChild(tdName);
+
+    const commitScore = (slot, inp)=>{
+      const prev = s[slot]?.score ?? null;
+      const raw = (inp.value||"").trim();
+      const n = raw==="" ? null : Number(raw);
+      if(n!=null && !Number.isNaN(n) && (n<100 || n>900)){
+        if(!confirm("Score is outside 100–900. Save anyway?")) return false;
+      }
+      s[slot] = ensureLevel(s[slot]);
+      s[slot].score = (raw==="" ? null : Number(raw));
+      if(s[slot].score!==prev){ save(); keepScroll(renderAll); } else save();
+      return true;
+    };
+
+    const levelChip = (entry)=>{
+      const div = document.createElement("div");
+      const label = (entry?.level && entry.level.trim()) ? entry.level : "-";
+      div.className = `level-chip ${classForEntry(entry)||"lvl-empty"}`;
+      div.textContent = label;
+      div.addEventListener("click",(e)=>{
+        openPaletteAt(div, (sel)=>{
+          if(sel.label === "-"){ entry.level=""; entry.levelColor=""; }
+          else if(sel.custom){
+            const user = prompt("Type the label for this level chip:", "");
+            if(!user) return;
+            entry.level = user.trim();
+            entry.levelColor = sel.colorClass;
+          }else{
+            entry.level = sel.label;
+            entry.levelColor = sel.colorClass || inferColorFromText(sel.label);
+          }
+          save(); keepScroll(renderAll);
+        });
+      });
+      return div;
+    };
+
+    const appendScore = (slot, labelOverride=null, visible=true)=>{
+      const td = document.createElement("td"); td.className="td"; td.style.display = visible ? "" : "none";
+      const box = document.createElement("div"); box.className="scorebox";
+      const input = document.createElement("input");
+      input.type="number"; input.inputMode="numeric"; input.className="score-input";
+      input.placeholder = labelOverride || slot[0].toUpperCase()+slot.slice(1);
+      input.value = s[slot]?.score ?? "";
+      input.title = "Enter or click away to save • 100–900";
+      input.addEventListener("keydown",(ev)=>{
+        if(ev.key==="Enter"){ ev.preventDefault(); commitScore(slot,input); focusNextScoreInput(input,1); }
+        else if(ev.key==="ArrowRight"){ ev.preventDefault(); focusNextScoreInput(input,1); }
+        else if(ev.key==="ArrowLeft"){ ev.preventDefault(); focusNextScoreInput(input,-1); }
+      });
+      input.addEventListener("blur", ()=>commitScore(slot,input));
+      const chip = levelChip(s[slot]);
+      box.append(input, chip); td.appendChild(box); tr.appendChild(td);
+    };
+
+    const appendDelta = (obj, visible=true)=>{
+      const td = document.createElement("td"); td.className="td"; td.style.display = visible ? "" : "none";
+      const d = document.createElement("div"); d.className="delta";
+      if(!obj){ d.textContent="-"; td.appendChild(d); tr.appendChild(td); return; }
+      if(obj.delta>0){ d.classList.add("up"); d.textContent = `+${obj.delta}`; }
+      else if(obj.delta<0){ d.classList.add("down"); d.textContent = `${obj.delta}`; }
+      else { d.classList.add("zero"); d.textContent = "0"; }
+      td.appendChild(d); tr.appendChild(td);
+    };
+
+    // Spring6 + Δ(6th→Fall)
+    if(state.showSpring6){
+      appendScore("spring6","Spring (6th)", true);
+      appendDelta(deltaBetween(s,"spring6","fall"), true);
+    }
+
+    // Base with visibility
+    const vfall=!!cls.columns.fall, vwin=!!cls.columns.winter, vspr=!!cls.columns.spring;
+    appendScore("fall",null,vfall);
+    appendDelta(deltaBetween(s,"fall","winter"), vfall && vwin);
+    appendScore("winter",null,vwin);
+    appendDelta(deltaBetween(s,"winter","spring"), vwin && vspr);
+    appendScore("spring",null,vspr);
+
+    // Typical / Stretch
+    const tdT = document.createElement("td"); tdT.className="td";
+    const gcT = document.createElement("div"); gcT.className="goal-cell";
+    const inT = document.createElement("input"); inT.type="number"; inT.inputMode="numeric"; inT.className="goal-input"; inT.placeholder="—"; inT.value = (s.typicalGoal ?? "");
+    inT.addEventListener("keydown", e=>{ if(e.key==="Enter"){ s.typicalGoal = inT.value===""?null:Number(inT.value); save(); renderDiagnostics(); }});
+    inT.addEventListener("blur", ()=>{ s.typicalGoal = inT.value===""?null:Number(inT.value); save(); renderDiagnostics(); });
+    if(metStatus(s).t){ const b=document.createElement("span"); b.className="badge met"; b.textContent="Met"; gcT.appendChild(b); }
+    gcT.appendChild(inT); tdT.appendChild(gcT); tr.appendChild(tdT);
+
+    const tdS = document.createElement("td"); tdS.className="td";
+    const gcS = document.createElement("div"); gcS.className="goal-cell";
+    const inS = document.createElement("input"); inS.type="number"; inS.inputMode="numeric"; inS.className="goal-input"; inS.placeholder="—"; inS.value = (s.stretchGoal ?? "");
+    inS.addEventListener("keydown", e=>{ if(e.key==="Enter"){ s.stretchGoal = inS.value===""?null:Number(inS.value); save(); renderDiagnostics(); }});
+    inS.addEventListener("blur", ()=>{ s.stretchGoal = inS.value===""?null:Number(inS.value); save(); renderDiagnostics(); });
+    if(metStatus(s).s){ const b2=document.createElement("span"); b2.className="badge met stretch"; b2.textContent="Met"; gcS.appendChild(b2); }
+    gcS.appendChild(inS); tdS.appendChild(gcS); tr.appendChild(tdS);
+
+    // Growth needed
+    const tdG = document.createElement("td"); tdG.className="td";
+    const g = growthNeeded(s);
+    const cell = document.createElement("div"); cell.className="goal-cell";
+    const ttxt = document.createElement("span"); ttxt.className="badge"; ttxt.textContent = "T: " + (g.t==null?"—":g.t);
+    const stxt = document.createElement("span"); stxt.className="badge stretch"; stxt.textContent = "S: " + (g.s==null?"—":g.s);
+    cell.append(ttxt, stxt); tdG.appendChild(cell); tr.appendChild(tdG);
+
+    // actions
+    const tdAct = document.createElement("td"); tdAct.className="td col-actions";
+    if(state.showRemove){
+      const actions = document.createElement("div"); actions.className="row-actions";
+      const rm = document.createElement("button"); rm.className="icon-btn"; rm.textContent="Remove";
+      rm.addEventListener("click", ()=>{
+        if(!confirm(`Remove ${fmtName(s)}?`)) return;
+        const arr = getActiveClass().students;
+        const i = arr.findIndex(x=>x.id===s.id);
+        if(i>=0){ arr.splice(i,1); save(); renderAll(); }
+      });
+      actions.append(rm);
+      tdAct.appendChild(actions);
+    }
+    tr.appendChild(tdAct);
+
+    studentsBody.appendChild(tr);
+  } // end for...of
+} // end renderDiagnostics
+
+function focusNextScoreInput(current, dir){
+  const inputs = qsa(".score-input");
+  const idx = inputs.indexOf(current);
+  const next = inputs[idx+dir];
+  if(next){ next.focus(); next.select(); }
+}
+
+/* ===================== Tardies ===================== */
+function renderTardies(){
+  const list = qs("#tardyList"); list.innerHTML = "";
+  const cls = getActiveClass();
+  const q = (qs("#tardySearch").value||"").toLowerCase().trim();
+  const arr = q ? cls.students.filter(s=>fmtName(s).toLowerCase().includes(q)) : cls.students;
+
+  if(arr.length===0){
+    const p = document.createElement("div"); p.className="muted"; p.textContent="No students. Add students on Diagnostics screen.";
+    list.appendChild(p); return;
+  }
+
+  arr.forEach(s=>{
+    s.tardies ??= 0; s.note ??= ""; s.dismissedAtCount ??= null;
+
+    const row = document.createElement("div"); row.className="tardy-row";
+    const name = document.createElement("div"); name.className="tardy-name"; name.textContent = fmtName(s);
+
+    const cluster = document.createElement("div"); cluster.className="tardy-cluster";
+    const showReminder = (s.tardies>0) && (s.tardies%3===0) && (s.dismissedAtCount !== s.tardies);
+    if(showReminder){
+      const chip = document.createElement("div"); chip.className="reminder floating";
+      chip.innerHTML = `Assign lunch detention <span class="x" title="dismiss">×</span>`;
+      chip.querySelector(".x").addEventListener("click", ()=>{
+        s.dismissedAtCount = s.tardies; save(); renderTardies();
+      });
+      cluster.appendChild(chip);
+    }
+
+    const minus = document.createElement("button"); minus.className="btn tardy-btn"; minus.textContent="−";
+    minus.addEventListener("click", ()=>{
+      const prev=s.tardies;
+      s.tardies = Math.max(0, s.tardies-1);
+      if(prev!==s.tardies) s.dismissedAtCount=null;
+      save(); renderTardies();
+    });
+
+    const cnt = document.createElement("div"); cnt.className="tardy-count"; cnt.textContent = s.tardies;
+
+    const plus = document.createElement("button"); plus.className="btn tardy-btn"; plus.textContent="+";
+    plus.addEventListener("click", ()=>{
+      const prev=s.tardies;
+      s.tardies += 1;
+      if(prev!==s.tardies) s.dismissedAtCount=null;
+      save(); renderTardies();
+    });
+
+    cluster.append(minus,cnt,plus);
+
+    const note = document.createElement("input"); note.className="note-input"; note.placeholder="Add note…"; note.value = s.note || "";
+    note.addEventListener("change", ()=>{ s.note = note.value; save(); });
+
+    row.append(name, cluster, note);
+    list.appendChild(row);
+  });
+
+  qs("#nameFormat2").value = state.nameFormat;
+}
+
+/* ===================== Columns Gear (Diagnostics) ===================== */
+const columnsBtn = qs("#columnsBtn");
+const columnsMenu = qs("#columnsMenu");
+columnsBtn.addEventListener("click", ()=> columnsMenu.classList.toggle("open"));
+document.addEventListener("click",(e)=>{
+  if(columnsMenu.classList.contains("open")){
+    if(!columnsMenu.contains(e.target) && !columnsBtn.contains(e.target)){
+      columnsMenu.classList.remove("open");
+    }
+  }
+});
+columnsMenu.querySelectorAll(".pill").forEach(p=>{
+  p.addEventListener("click", ()=>{
+    const key = p.dataset.col;
+    const cls = getActiveClass();
+    cls.columns[key] = !cls.columns[key];
+    save(); renderDiagnostics();
+  });
+});
+
+/* ===================== Bulk Add ===================== */
+const bulkModal = qs("#bulkModal");
+const bulkTa = qs("#bulkTextarea");
+const bulkPrev = qs("#bulkPreview");
+let bulkParsed = [];
+
+function openBulkModal(){
+  bulkTa.value=""; bulkPrev.innerHTML=""; bulkParsed=[];
+  bulkModal.classList.add("open"); bulkModal.setAttribute("aria-hidden","false");
+}
+qs("#bulkAddBtn").addEventListener("click", openBulkModal);
+qs("#bulkCancelBtn").addEventListener("click", ()=>{ bulkModal.classList.remove("open"); bulkModal.setAttribute("aria-hidden","true"); });
+bulkModal.addEventListener("click",(e)=>{ if(e.target===bulkModal) { bulkModal.classList.remove("open"); bulkModal.setAttribute("aria-hidden","true"); }});
+
+qs("#bulkPreviewBtn").addEventListener("click", ()=>{
+  const lines = bulkTa.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const set = new Set(); bulkParsed = [];
+  lines.forEach(line=>{
+    const o = parseName(line);
+    if(!o) return;
+    const label = (o.first||o.last) ? `${o.first||""} ${o.last||""}`.trim() : o.name;
+    if(!label || set.has(label.toLowerCase())) return;
+    set.add(label.toLowerCase());
+    bulkParsed.push(o);
+  });
+  bulkPrev.innerHTML="";
+  bulkParsed.forEach((o,i)=>{
+    const chip = document.createElement("div"); chip.className="theme-chip";
+    chip.textContent = (o.first||o.last) ? `${o.first||""} ${o.last||""}`.trim() : o.name;
+    const x = document.createElement("span"); x.className="x"; x.textContent=" ×"; x.style.cursor="pointer";
+    x.addEventListener("click", ()=>{ bulkParsed.splice(i,1); chip.remove(); });
+    chip.appendChild(x);
+    bulkPrev.appendChild(chip);
+  });
+});
+qs("#bulkConfirmBtn").addEventListener("click", ()=>{
+  let items = bulkParsed.length ? bulkParsed : bulkTa.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(parseName).filter(Boolean);
+  if(!items.length){ alert("No names found."); return; }
+  const cls = getActiveClass();
+  items.forEach(o=>{
+    cls.students.push(ensureStudent({
+      id:crypto.randomUUID(),
+      name: o.name || `${o.first||""} ${o.last||""}`.trim(),
+      first:o.first, last:o.last,
+      fall:{}, winter:{}, spring:{}, spring6:{},
+      typicalGoal:null, stretchGoal:null,
+      tardies:0, note:"", dismissedAtCount:null
+    }));
+  });
+  save();
+  bulkModal.classList.remove("open"); bulkModal.setAttribute("aria-hidden","true");
+  renderAll();
+});
+
+/* ===================== Shortcuts Modal ===================== */
+const shortcutsModal = qs("#shortcutsModal");
+function openShortcuts(){ shortcutsModal.classList.add("open"); shortcutsModal.setAttribute("aria-hidden","false"); }
+function closeShortcuts(){ shortcutsModal.classList.remove("open"); shortcutsModal.setAttribute("aria-hidden","true"); }
+qs("#shortcutsBtn").addEventListener("click", openShortcuts);
+qs("#shortcutsBtn2").addEventListener("click", openShortcuts);
+qs("#shortcutsClose").addEventListener("click", closeShortcuts);
+shortcutsModal.addEventListener("click",(e)=>{ if(e.target===shortcutsModal) closeShortcuts(); });
+
+/* ===================== Settings: Manage Tabs & Themes ===================== */
+qs("#manageTabsBtn").addEventListener("click", ()=>openManageTabs());
+
+const themeGrid = qs("#themeGrid");
+const THEMES = [
+  {key:"navy",   label:"Navy",   sw:"#0f244d"},
+  {key:"white",  label:"White",  sw:"#ffffff"},
+  {key:"red",    label:"Red",    sw:"#cf3344"},
+  {key:"green",  label:"Green",  sw:"#2dd36f"},
+  {key:"purple", label:"Purple", sw:"#5a33a3"},
+  {key:"teal",   label:"Teal",   sw:"#2fd4c5"},
+  {key:"orange", label:"Orange", sw:"#ff9a53"},
+  {key:"pink",   label:"Pink",   sw:"#ff7fb5"},
+  {key:"indigo", label:"Indigo", sw:"#7f8cff"},
+  {key:"slate",  label:"Slate",  sw:"#8aa0c8"},
+  {key:"gold",   label:"Gold",   sw:"#ffd166"},
+];
+function renderThemeChips(){
+  themeGrid.innerHTML="";
+  THEMES.forEach(t=>{
+    const b = document.createElement("button");
+    b.className = "theme-chip" + (state.theme===t.key ? " active":"");
+    const sw = document.createElement("span"); sw.className="swatch"; sw.style.background = t.sw;
+    const lbl = document.createElement("span"); lbl.textContent = t.label;
+    b.append(sw,lbl);
+    b.addEventListener("click", ()=>{
+      state.theme = t.key; document.body.setAttribute("data-theme", state.theme); save(); renderThemeChips(); applyScreen();
+    });
+    themeGrid.appendChild(b);
+  });
+}
+
+/* Manage Tabs Modal */
+const manageTabsModal = qs("#manageTabsModal");
+function openManageTabs(){
+  const list = qs("#manageTabsList");
+  list.innerHTML = "";
+
+  function row(label, visible, onToggle, deletable, onDelete){
+    const r = document.createElement("div"); r.className="col-item";
+    const dot = document.createElement("div"); dot.textContent="•"; dot.className="muted";
+    const name = document.createElement("div"); name.textContent = label;
+    const right = document.createElement("div"); right.style.display="flex"; right.style.gap="8px";
+    const vis = document.createElement("button"); vis.className="btn"; vis.textContent = visible ? "Hide" : "Show";
+    vis.addEventListener("click", ()=>{ onToggle(); openManageTabs(); });
+    right.appendChild(vis);
+    if(deletable){
+      const del = document.createElement("button"); del.className="btn bad"; del.textContent="Delete";
+      del.addEventListener("click", ()=>{ if(confirm(`Delete tab "${label}"?`)){ onDelete(); openManageTabs(); }});
+      right.appendChild(del);
+    }
+    r.append(dot, name, right); return r;
+  }
+
+  list.appendChild(row("Diagnostics", state.tabsVisibility.diagnostics, ()=>{ state.tabsVisibility.diagnostics=!state.tabsVisibility.diagnostics; save(); renderAppNav(); }, false));
+  list.appendChild(row("Tardies", state.tabsVisibility.tardies, ()=>{ state.tabsVisibility.tardies=!state.tabsVisibility.tardies; save(); renderAppNav(); }, false));
+  state.customTabs.forEach((t,i)=>{
+    list.appendChild(row(t.name, t.visible, ()=>{ t.visible=!t.visible; save(); renderAppNav(); }, true, ()=>{
+      const idx = state.customTabs.findIndex(x=>x.id===t.id);
+      state.customTabs.splice(idx,1); save(); if(state.activeScreen===`custom:${t.id}`) state.activeScreen="diagnostics"; renderAppNav(); applyScreen();
+    }));
+  });
+
+  manageTabsModal.classList.add("open"); manageTabsModal.setAttribute("aria-hidden","false");
+}
+qs("#closeManageTabs").addEventListener("click", ()=>{ manageTabsModal.classList.remove("open"); manageTabsModal.setAttribute("aria-hidden","true"); });
+
+/* ===================== Custom Tabs ===================== */
+function getCustomHost(){
+  let host = qs("#customHost");
+  if(!host){
+    host = document.createElement("section");
+    host.id="customHost"; host.dataset.customHost="1"; host.className="card"; host.style.display="none";
+    host.innerHTML = `
+      <div class="toolbar">
+        <input id="customSearch" class="search" placeholder="Search students / text columns (if enabled)" />
+        <div class="spacer"></div>
+        <label class="muted" for="nameFormatCustom" style="margin-right:6px;">Names</label>
+        <select id="nameFormatCustom" class="select" style="margin-right:10px;">
+          <option value="firstLast">First Last</option>
+          <option value="lastFirst">Last, First</option>
+        </select>
+        <button id="togglePalette" class="btn" title="Show/Hide color buttons">Colors</button>
+        <button id="editThisTab" class="btn">Edit Tab</button>
+      </div>
+      <div class="divider"></div>
+      <div id="customTableWrap"></div>
+    `;
+    qs(".wrap").appendChild(host);
+    qs("#customSearch").addEventListener("input", ()=>{ state.search = qs("#customSearch").value; save(); applyScreen(); });
+    qs("#editThisTab").addEventListener("click", ()=>{
+  const k = state.activeScreen;
+  if(k && k.startsWith("custom:")) openTabBuilder(k.split(":")[1]);
+});
+    qs("#togglePalette").addEventListener("click", ()=>{
+      document.body.classList.toggle("show-palette");
+    });
+    const nf = qs("#nameFormatCustom");
+    if(nf){
+      nf.value = state.nameFormat || "firstLast";
+      nf.addEventListener("change", ()=>{
+        state.nameFormat = nf.value; save(); applyScreen();
+        const g = qs("#nameFormat"); if(g) g.value = state.nameFormat;
+      });
+    }
+
+
+  }
+  return host;
+}
+function colorForValue(cfg, val){
+  if(val==null || isNaN(val)) return "lvl-empty";
+  const inR = (pair)=> pair && pair.length===2 && val>=pair[0] && val<=pair[1];
+  if(inR(cfg.ranges?.green)) return "lvl-green";
+  if(inR(cfg.ranges?.yellow)) return "lvl-yellow";
+  if(inR(cfg.ranges?.red)) return "lvl-red";
+  return "lvl-empty";
+}
+function renderCustomTab(tabId){
+  const tab = state.customTabs.find(t=>t.id===tabId);
+  const pal = qs("#togglePalette"); if(pal){ const hasText = (tab.columns||[]).some(c=>c.type==="text"); pal.style.display = hasText ? "" : "none"; }
+  if(!tab){ state.activeScreen="diagnostics"; save(); applyScreen(); return; }
+  hideAllScreens();
+  const host = getCustomHost(); host.style.display="";
+
+  // header + search
+  qs("#customSearch").value = state.search || "";
+  const nfSel = qs("#nameFormatCustom"); if(nfSel) nfSel.value = state.nameFormat || "firstLast";
+
+  const wrap = qs("#customTableWrap"); wrap.innerHTML="";
+  const table = document.createElement("table"); table.className="table";
+  const thead = document.createElement("thead"); thead.className="thead";
+  const tbody = document.createElement("tbody");
+
+  const trh = document.createElement("tr"); trh.className="tr";
+  const thName = document.createElement("th"); thName.className="th"; thName.textContent="Student ";
+  const sortName = document.createElement("span"); sortName.className="sort"; sortName.dataset.sort="name"; sortName.textContent="↕";
+  sortName.addEventListener("click", ()=> sortCustom(tabId,"name"));
+  thName.appendChild(sortName); trh.appendChild(thName);
+
+  tab.columns.forEach(col=>{
+    const th = document.createElement("th"); th.className="th draggable"; th.setAttribute("draggable","true");
+    th.dataset.colId = col.id;
+    th.textContent = col.name + " ";
+    const s = document.createElement("span"); s.className="sort"; s.dataset.sort=col.id; s.textContent="↕";
+    s.addEventListener("click", ()=> sortCustom(tabId, col.id));
+    th.appendChild(s);
+
+    th.addEventListener("dragstart", ev=>{ ev.dataTransfer.setData("text/plain", col.id); ev.dataTransfer.effectAllowed="move"; });
+    th.addEventListener("dragover", ev=> ev.preventDefault());
+    th.addEventListener("drop", ev=>{
+      ev.preventDefault();
+      const fromId = ev.dataTransfer.getData("text/plain");
+      if(!fromId || fromId===col.id) return;
+      const fromIdx = tab.columns.findIndex(c=>c.id===fromId);
+      const toIdx = tab.columns.findIndex(c=>c.id===col.id);
+      const [moved] = tab.columns.splice(fromIdx,1);
+      tab.columns.splice(toIdx,0,moved);
+      save(); renderCustomTab(tabId);
+    });
+
+    trh.appendChild(th);
+  });
+  trh.appendChild(document.createElement("th")); // spacer
+  thead.appendChild(trh);
+
+  const cls = getActiveClass();
+  let students = [...cls.students];
+
+  // search filter: names + text cols (opt-in)
+  const q = (state.search||"").toLowerCase().trim();
+  if(q){
+    students = students.filter(st=>{
+      if(fmtName(st).toLowerCase().includes(q)) return true;
+      for(const col of tab.columns){
+        if(col.type==="text" && (col.inSearch===true || col.inSearch==="true")){
+          const cell = (((st.customData||{})[tab.id]||{})[col.id]||{}).text || "";
+          if((cell+"").toLowerCase().includes(q)) return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  // sort
+  const sst = state.customSort[tabId] || {key:"name", dir:1};
+  students.sort((a,b)=>{
+    const getVal = (stu)=>{
+      if(sst.key==="name") return fmtName(stu).toLowerCase();
+      const col = tab.columns.find(c=>c.id===sst.key);
+      if(!col) return 0;
+      const cell = (((stu.customData||{})[tab.id]||{})[col.id]||{});
+      return col.type==="num" ? (cell.value ?? -Infinity) : (cell.text||"").toLowerCase();
+    };
+    const va=getVal(a), vb=getVal(b);
+    if(va<vb) return -1*sst.dir;
+    if(va>vb) return 1*sst.dir;
+    return 0;
+  });
+
+  students.forEach(st=>{
+    st.customData ??= {}; st.customData[tab.id] ??= {};
+    const tr = document.createElement("tr"); tr.className="tr";
+
+    const tdName = document.createElement("td");
+    tdName.className = `td name-cell ${nameStateClass(st)}`;
+    const wrapName = document.createElement("div"); wrapName.className="name-wrap"; wrapName.textContent = fmtName(st);
+    tdName.appendChild(wrapName); tr.appendChild(tdName);
+
+    tab.columns.forEach(col=>{
+      const td = document.createElement("td"); td.className="td";
+      const cell = st.customData[tab.id][col.id] ?? (st.customData[tab.id][col.id] = (col.type==="num"?{value:null}:{text:""}));
+
+      if(col.type==="num"){
+        const wrapN = document.createElement("div"); wrapN.className="scorebox";
+        const chip = document.createElement("div"); chip.className="num-chip lvl-empty";
+        function refresh(){
+          const v = (cell.value==null||isNaN(cell.value)) ? null : Number(cell.value);
+          const color = colorForValue(col, v);
+          chip.className = "num-chip " + color;
+          chip.textContent = (col.chipLabelMode==="custom" && (cell.chipText||"").trim()!=="")
+            ? cell.chipText
+            : (v==null ? "—" : v.toFixed(col.precision||0));
+        }
+        chip.addEventListener("click", ()=>{
+          if(col.hideInput){
+            const raw = prompt(`Enter value for "${col.name}" (${col.min}–${col.max})`, cell.value ?? "");
+            if(raw===null) return;
+            const num = raw==="" ? null : Number(raw);
+            if(num!=null && (isNaN(num) || num < col.min || num > col.max)){
+              if(!confirm("Value outside configured range. Save anyway?")) return;
+            }
+            cell.value = num; save(); refresh();
+          }else if(col.chipLabelMode==="custom"){
+            const t = prompt(`Chip text for "${col.name}" (display only)`, cell.chipText ?? "");
+            if(t===null) return;
+            cell.chipText = t; save(); refresh();
+          }
+        });
+        refresh();
+
+        if(!col.hideInput){
+          const inp = document.createElement("input"); inp.type="number"; inp.inputMode="decimal"; inp.step = col.step || 1;
+          inp.min = col.min; inp.max = col.max; inp.className="score-input"; inp.placeholder = col.name;
+          inp.value = (cell.value ?? "");
+          const commit = ()=>{
+            const raw = (inp.value||"").trim();
+            const num = raw===""?null:Number(raw);
+            if(num!=null && (isNaN(num) || num < col.min || num > col.max)){
+              if(!confirm("Value outside configured range. Save anyway?")) return;
+            }
+            cell.value = num; save(); refresh();
+          };
+          inp.addEventListener("keydown",(ev)=>{ if(ev.key==="Enter"){ ev.preventDefault(); commit(); }});
+          inp.addEventListener("blur", commit);
+          wrapN.append(inp, chip);
+        }else{
+          wrapN.append(chip);
+        }
+        td.appendChild(wrapN);
+      }else{
+        const store = (st.customData ||= {});
+      const slot = (store[tab.id] ||= {});
+      slot[col.id] ||= { text:"", bg:null };
+      const cell = slot[col.id];
+
+      const wrapT = document.createElement("div"); wrapT.className="text-cell";
+      const ta = document.createElement("textarea");
+      ta.className = "text-input";
+      ta.rows = col.multiline ? 3 : 1;
+      ta.placeholder = col.name || "Text";
+      ta.value = cell.text || "";
+      // live-update model and debounce save to avoid losing edits on re-render/search
+      let _svTimer = null;
+      function _debouncedSave(){ if(_svTimer) clearTimeout(_svTimer); _svTimer = setTimeout(()=>{ try{ save(); }catch(e){} }, 300); }
+      ta.addEventListener("input", ()=>{ cell.text = ta.value; _debouncedSave(); });
+      if(cell.bg){ ta.classList.add("has-bg"); ta.style.background = cell.bg; }
+      const palBtn = document.createElement("button"); palBtn.className="palette-btn"; palBtn.title="Cell color"; palBtn.textContent="🎨";
+let pop = null;
+function applyColor(hex){
+  cell.bg = hex || null;
+  if(cell.bg){ ta.classList.add("has-bg"); ta.style.background = cell.bg; } else { ta.classList.remove("has-bg"); ta.style.background=""; }
+  save();
+}
+palBtn.addEventListener("click", (ev)=>{
+  ev.stopPropagation();
+  if(pop && pop.style.display==="block"){ pop.style.display="none"; return; }
+  if(!pop){
+    pop = document.createElement("div"); pop.className="color-pop";
+    const row = document.createElement("div"); row.className="color-row";
+    const colors=["#e53935","#fb8c00","#fdd835","#43a047","#1e88e5","#8e24aa","#9e9e9e"];
+    colors.forEach(c=>{ const b=document.createElement("button"); b.className="color-chip"; b.style.background=c; b.title=c; b.addEventListener("click", ()=>{ applyColor(c); pop.style.display="none"; }); row.appendChild(b); });
+    const clr=document.createElement("button"); clr.className="color-chip clear"; clr.textContent="Clear"; clr.addEventListener("click", ()=>{ applyColor(null); pop.style.display="none"; });
+    pop.append(row, clr); document.body.appendChild(pop);
+  }
+  const r = palBtn.getBoundingClientRect();
+  pop.style.left = Math.round(r.left) + "px";
+  pop.style.top  = Math.round(r.bottom + 6) + "px";
+  pop.style.display = "block";
+});
+document.addEventListener("mousedown", (e)=>{ if(pop && !pop.contains(e.target) && e.target!==palBtn){ pop.style.display="none"; }});
+wrapT.append(ta, palBtn);
+      td.appendChild(wrapT);
+      }
+
+      tr.appendChild(td);
+    });
+
+    tr.appendChild(document.createElement("td")); // spacer
+    tbody.appendChild(tr);
+  });
+
+  table.append(thead, tbody);
+  wrap.appendChild(table);
+
+  function sortCustom(tabId, key){
+    const st = state.customSort[tabId] || (state.customSort[tabId]={key:"name",dir:1});
+    if(st.key===key) st.dir *= -1; else { st.key=key; st.dir=1; }
+    save(); renderCustomTab(tabId);
+  }
+  // expose for header clicks created above
+  window.sortCustom = sortCustom;
+}
+
+/* ===================== Custom Tab Builder ===================== */
+const tabBuilderModal = qs("#tabBuilderModal");
+function openTabBuilder(editTabId){
+  const editing = !!editTabId;
+  qs("#tbTitle").textContent = editing ? "Edit Custom Tab" : "New Custom Tab";
+  const existing = editing ? state.customTabs.find(t=>t.id===editTabId) : null;
+  qs("#tbName").value = existing?.name || "";
+  const colsHost = qs("#tbCols"); colsHost.innerHTML = "";
+  const existingCols = existing?.columns || [];
+
+  function makeDragList(container){
+    let dragged=null;
+    qsa(".drag", container).forEach(h=>{
+      const row = h.closest(".col-item");
+      h.setAttribute("draggable","true");
+      h.addEventListener("dragstart", (e)=>{ dragged=row; e.dataTransfer.effectAllowed="move"; });
+      h.addEventListener("dragover", (e)=> e.preventDefault());
+      h.addEventListener("drop", (e)=>{
+        e.preventDefault();
+        if(!dragged || dragged===row) return;
+        const rows = Array.from(container.children);
+        const toIdx = rows.indexOf(row);
+        container.insertBefore(dragged, (toIdx>rows.indexOf(dragged)) ? row.nextSibling : row);
+        dragged=null;
+      });
+    });
+  }
+
+  function addNumericCol(init={}){
+    const row = document.createElement("div"); row.className="col-item"; row.dataset.colId = init.id || "";
+    row.innerHTML = `
+      <div class="drag">⋮⋮</div>
+      <div>
+        <div class="field"><label>Column name</label><input class="nm" placeholder="e.g., Benchmark" value="${init.name||""}"></div>
+        <div style="display:grid; grid-template-columns: repeat(2,1fr); gap:8px; margin-top:6px;">
+          <div class="field"><label>Min</label><input type="number" class="min" value="${init.min??0}"></div>
+          <div class="field"><label>Max</label><input type="number" class="max" value="${init.max??100}"></div>
+          <div class="field"><label>Decimals</label><input type="number" class="prec" value="${init.precision??0}"></div>
+          <div class="field"><label>Step</label><input type="number" class="step" value="${init.step??1}"></div>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(2,1fr); gap:8px; margin-top:8px;">
+          <div class="field"><label>Hide input field</label>
+            <select class="hide">
+              <option value="false"${init.hideInput? "":" selected"}>No</option>
+              <option value="true"${init.hideInput? " selected":""}>Yes</option>
+            </select>
+          </div>
+          <div class="field"><label>Chip label mode</label>
+            <select class="chipmode">
+              <option value="value"${(init.chipLabelMode||"value")==="value"?" selected":""}>Show value</option>
+              <option value="custom"${(init.chipLabelMode||"value")==="custom"?" selected":""}>Custom text</option>
+            </select>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="field"><label>Green range [min,max]</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input type="number" class="gmin" value="${init.ranges?.green?.[0]??""}" placeholder="min">
+            <input type="number" class="gmax" value="${init.ranges?.green?.[1]??""}" placeholder="max">
+          </div>
+        </div>
+        <div class="field"><label>Yellow range [min,max]</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input type="number" class="ymin" value="${init.ranges?.yellow?.[0]??""}" placeholder="min">
+            <input type="number" class="ymax" value="${init.ranges?.yellow?.[1]??""}" placeholder="max">
+          </div>
+        </div>
+        <div class="field"><label>Red range [min,max]</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input type="number" class="rmin" value="${init.ranges?.red?.[0]??""}" placeholder="min">
+            <input type="number" class="rmax" value="${init.ranges?.red?.[1]??""}" placeholder="max">
+          </div>
+        </div>
+        <div class="field"><label>Test value</label><input class="testval" type="number" value=""></div>
+        <div class="legend" style="margin-top:6px;"><span class="muted">Result:</span> <span class="num-chip lvl-empty reschip">—</span></div>
+      </div>
+      <div><button class="btn bad rm">Remove</button></div>
+    `;
+    row.querySelector(".rm").addEventListener("click", ()=> row.remove());
+    // live preview
+    const res = row.querySelector(".reschip"), test = row.querySelector(".testval");
+    function cfg(){
+      return {
+        name: row.querySelector(".nm").value.trim() || "Column",
+        min: Number(row.querySelector(".min").value)||0,
+        max: Number(row.querySelector(".max").value)||100,
+        precision: Math.max(0, Number(row.querySelector(".prec").value)||0),
+        step: Number(row.querySelector(".step").value)||1,
+        hideInput: row.querySelector(".hide").value==="true",
+        chipLabelMode: row.querySelector(".chipmode").value,
+        ranges:{
+          green:[Number(row.querySelector(".gmin").value), Number(row.querySelector(".gmax").value)],
+          yellow:[Number(row.querySelector(".ymin").value), Number(row.querySelector(".ymax").value)],
+          red:[Number(row.querySelector(".rmin").value), Number(row.querySelector(".rmax").value)]
+        }
+      };
+    }
+    function refresh(){
+      const v = Number(test.value);
+      const color = colorForValue(cfg(), isNaN(v)?null:v);
+      res.className = "num-chip " + color;
+      res.textContent = isNaN(v) ? "—" : v.toFixed(cfg().precision||0);
+    }
+    row.addEventListener("input", refresh, true);
+    qs("#tbCols").appendChild(row);
+    makeDragList(qs("#tbCols"));
+  }
+  function addTextCol(init={}){
+    const row = document.createElement("div"); row.className="col-item"; row.dataset.colId = init.id || ""; row.dataset.colId = init.id || "";
+    row.innerHTML = `
+      <div class="drag">⋮⋮</div>
+      <div>
+        <div class="field"><label>Column name</label><input class="nm" placeholder="e.g., Notes" value="${init.name||""}"></div>
+        <div style="display:grid; grid-template-columns: repeat(2,1fr); gap:8px; margin-top:6px;">
+          <div class="field"><label>Multiline</label>
+            <select class="mult">
+              <option value="false"${init.multiline? "":" selected"}>No</option>
+              <option value="true"${init.multiline? " selected":""}>Yes</option>
+            </select>
+          </div>
+          <div class="field"><label>Include in search</label>
+            <select class="srch">
+              <option value="false"${init.inSearch? "":" selected"}>No</option>
+              <option value="true"${init.inSearch? " selected":""}>Yes</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div><button class="btn bad rm">Remove</button></div>
+    `;
+    row.querySelector(".rm").addEventListener("click", ()=> row.remove());
+    qs("#tbCols").appendChild(row);
+    makeDragList(qs("#tbCols"));
+  }
+
+  
+  // Pre-fill when editing
+  if(editing){ existingCols.forEach(col=>{ (col.type==="num" ? addNumericCol : addTextCol)(col); }); }
+qs("#tbAddNum").onclick = ()=> addNumericCol();
+  qs("#tbAddTxt").onclick = ()=> addTextCol();
+
+  qs("#tbCancel").onclick = ()=>{ tabBuilderModal.classList.remove("open"); tabBuilderModal.setAttribute("aria-hidden","true"); };
+  qs("#tbSave").onclick = ()=>{
+    const name = qs("#tbName").value.trim() || "Custom";
+    const cols=[];
+    qsa("#tbCols .col-item").forEach(row=>{
+      if(row.querySelector(".gmin")){ // numeric
+        cols.push({
+          id: row.dataset.colId || crypto.randomUUID(), type:"num",
+          name: row.querySelector(".nm").value.trim() || "Column",
+          min: Number(row.querySelector(".min").value)||0,
+          max: Number(row.querySelector(".max").value)||100,
+          precision: Math.max(0, Number(row.querySelector(".prec").value)||0),
+          step: Number(row.querySelector(".step").value)||1,
+          hideInput: row.querySelector(".hide").value==="true",
+          chipLabelMode: row.querySelector(".chipmode").value,
+          ranges: {
+            green:[Number(row.querySelector(".gmin").value), Number(row.querySelector(".gmax").value)],
+            yellow:[Number(row.querySelector(".ymin").value), Number(row.querySelector(".ymax").value)],
+            red:[Number(row.querySelector(".rmin").value), Number(row.querySelector(".rmax").value)],
+          }
+        });
+      }else{ // text
+        cols.push({
+          id: row.dataset.colId || crypto.randomUUID(), type:"text",
+          name: row.querySelector(".nm").value.trim() || "Text",
+          multiline: row.querySelector(".mult").value==="true",
+          inSearch: row.querySelector(".srch").value==="true",
+        });
+      }
+    });
+    if(editing){
+      const t = state.customTabs.find(t=>t.id===editTabId);
+      if(t){ t.name = name; t.columns = cols; }
+      save();
+      tabBuilderModal.classList.remove("open"); tabBuilderModal.setAttribute("aria-hidden","true");
+      renderAppNav();
+      // keep current activeScreen
+      applyScreen();
+    } else {
+      const tab = { id: crypto.randomUUID(), name, visible:true, columns:cols };
+      state.customTabs.push(tab);
+      save();
+      tabBuilderModal.classList.remove("open"); tabBuilderModal.setAttribute("aria-hidden","true");
+      renderAppNav();
+      state.activeScreen = "custom:"+tab.id; save(); applyScreen();
+    };
+  };
+
+  tabBuilderModal.classList.add("open"); tabBuilderModal.setAttribute("aria-hidden","false");
+}
+
+/* ===================== Student Modal + Charts ===================== */
+let currentStuId = null;
+function openStudentModal(stuId){
+  const s = getActiveClass().students.find(x=>x.id===stuId);
+  if(!s) return;
+  currentStuId = stuId;
+
+  qs("#stuTitle").textContent = fmtName(s);
+
+  // fill inputs
+  qs("#mTypical").value = s.typicalGoal ?? "";
+  qs("#mStretch").value = s.stretchGoal ?? "";
+  qs("#mFallScore").value = s.fall.score ?? "";
+  qs("#mWinterScore").value = s.winter.score ?? "";
+  qs("#mSpringScore").value = s.spring.score ?? "";
+  qs("#mSpring6Score").value = s.spring6.score ?? "";
+
+  function setChip(id, entry){
+    const el = qs(id);
+    el.className = `level-chip ${classForEntry(entry)||"lvl-empty"}`;
+    el.textContent = (entry.level||"").trim() ? entry.level : "-";
+    el.onclick = ()=>{
+      openPaletteAt(el, (sel)=>{
+        if(sel.label==="-"){ entry.level=""; entry.levelColor=""; }
+        else if(sel.custom){
+          const t = prompt("Type the label for this level chip:", "");
+          if(!t) return; entry.level = t.trim(); entry.levelColor = sel.colorClass;
+        }else{
+          entry.level = sel.label; entry.levelColor = sel.colorClass || inferColorFromText(sel.label);
+        }
+        save(); openStudentModal(stuId);
+      });
+    };
+  }
+  setChip("#mFallLevel", s.fall);
+  setChip("#mWinterLevel", s.winter);
+  setChip("#mSpringLevel", s.spring);
+  setChip("#mSpring6Level", s.spring6);
+
+  // growth/status
+  const g = growthNeeded(s);
+  const gHost = qs("#mGrowth"); gHost.innerHTML="";
+  const tbad = document.createElement("span"); tbad.className="badge"; tbad.textContent = "T: " + (g.t==null?"—":g.t);
+  const sbad = document.createElement("span"); sbad.className="badge stretch"; sbad.textContent = "S: " + (g.s==null?"—":g.s);
+  gHost.append(tbad,sbad);
+
+  const st = metStatus(s);
+  const stHost = qs("#mStatus"); stHost.innerHTML="";
+  if(st.t){ const b=document.createElement("span"); b.className="badge met"; b.textContent="Met Typical"; stHost.appendChild(b); }
+  if(st.s){ const b=document.createElement("span"); b.className="badge met stretch"; b.textContent="Met Stretch"; stHost.appendChild(b); }
+  if(!st.t && !st.s){ const m=document.createElement("span"); m.className="muted"; m.textContent="—"; stHost.appendChild(m); }
+
+  // bind inputs (save on blur/Enter)
+  function bindNum(id, apply){
+    const el = qs(id);
+    el.onkeydown = (e)=>{ if(e.key==="Enter"){ apply(); } };
+    el.onblur = apply;
+  }
+  bindNum("#mTypical", ()=>{ const v = qs("#mTypical").value.trim(); s.typicalGoal = v===""?null:Number(v); save(); renderDiagnostics(); openStudentModal(stuId); });
+  bindNum("#mStretch", ()=>{ const v = qs("#mStretch").value.trim(); s.stretchGoal = v===""?null:Number(v); save(); renderDiagnostics(); openStudentModal(stuId); });
+  function bindScore(id, slot){
+    const el = qs(id);
+    el.onkeydown = (e)=>{ if(e.key==="Enter"){ apply(); } };
+    el.onblur = apply;
+    function apply(){
+      const raw = el.value.trim();
+      const n = raw===""?null:Number(raw);
+      if(n!=null && !Number.isNaN(n) && (n<100||n>900)){ if(!confirm("Score outside 100–900. Save anyway?")) return; }
+      s[slot] = ensureLevel(s[slot]); s[slot].score = n;
+      save(); renderDiagnostics(); openStudentModal(stuId);
+    }
+  }
+  bindScore("#mFallScore","fall"); bindScore("#mWinterScore","winter"); bindScore("#mSpringScore","spring"); bindScore("#mSpring6Score","spring6");
+
+  // tabs reset to overview
+  qsa(".tab-btn").forEach(b=>b.classList.remove("active"));
+  qsa(".modal-section").forEach(sec=>sec.classList.remove("active"));
+  qs('[data-tab="ov"]').classList.add("active");
+  qs("#tab-ov").classList.add("active");
+
+  const modal = qs("#studentModal");
+  modal.classList.add("open"); modal.setAttribute("aria-hidden","false");
+
+  // draw charts after opening
+  setTimeout(()=>drawChartsForStudent(s),0);
+}
+qs("#stuClose").addEventListener("click", ()=>{ qs("#studentModal").classList.remove("open"); qs("#studentModal").setAttribute("aria-hidden","true"); });
+qs("#studentModal").addEventListener("click",(e)=>{ if(e.target===qs("#studentModal")) { qs("#studentModal").classList.remove("open"); qs("#studentModal").setAttribute("aria-hidden","true"); }});
+qsa(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    qsa(".tab-btn").forEach(b=>b.classList.remove("active")); btn.classList.add("active");
+    qsa(".modal-section").forEach(sec=>sec.classList.remove("active"));
+    const id = btn.dataset.tab==="ov" ? "#tab-ov" : "#tab-ch";
+    qs(id).classList.add("active");
+    if(id==="#tab-ch"){
+      const s = getActiveClass().students.find(x=>x.id===currentStuId);
+      if(s) setTimeout(()=>drawChartsForStudent(s),0);
+    }
+  });
+});
+
+/* Charts helpers */
+function clearCanvas(c){
+  const ctx = c.getContext("2d");
+  const dpr = Math.max(1, Math.floor(devicePixelRatio||1));
+  const cssW = Math.max(1, Math.round(c.clientWidth || c.width || 800));
+  const cssH = Math.max(1, Math.round(c.clientHeight || c.height || 220));
+  c.width = cssW*dpr; c.height = cssH*dpr;
+  ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,cssW,cssH);
+  return ctx;
+}
+function mapSeries(vals, w, h, minY, maxY, left=40, right=10, top=10, bottom=24){
+  const innerW = w - left - right, innerH = h - top - bottom;
+  const xs = vals.map((_,i)=> left + (i/(Math.max(1,vals.length-1)))*innerW );
+  const ys = vals.map(v => v==null ? null : top + (1 - ((v - minY) / (maxY - minY || 1)))*innerH);
+  return vals.map((v,i)=> v==null ? null : {x:xs[i], y:ys[i]});
+}
+function drawLine(ctx, pts, color="#7db4ff", w=2){
+  ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineJoin="round"; ctx.lineCap="round";
+  ctx.beginPath(); let started=false;
+  pts.forEach(p=>{ if(!p) return; if(!started){ ctx.moveTo(Math.round(p.x),Math.round(p.y)); started=true; } else { ctx.lineTo(Math.round(p.x),Math.round(p.y)); }});
+  ctx.stroke();
+}
+function drawDots(ctx, pts, color="#7db4ff"){
+  ctx.fillStyle=color; pts.forEach(p=>{ if(!p) return; ctx.beginPath(); ctx.arc(Math.round(p.x),Math.round(p.y),3,0,Math.PI*2); ctx.fill(); });
+}
+function drawChartsForStudent(s){
+  const show6 = state.showSpring6;
+  const labels = ["Fall","Winter","Spring"].concat(show6?["Spring6"]:[]);
+  const series = [s.fall.score, s.winter.score, s.spring.score].concat(show6?[s.spring6.score]:[]);
+  const present = series.filter(v=>v!=null);
+  const min = (present.length?Math.min(...present):300) - 10;
+  const max = (present.length?Math.max(...present):700) + 10;
+
+  // Progress
+  const c1 = qs("#chartProgress"); const ctx1 = clearCanvas(c1);
+  const pts = mapSeries(series, c1.clientWidth, c1.clientHeight, min, max);
+  ctx1.strokeStyle="#385087"; ctx1.lineWidth=1; ctx1.globalAlpha=.5; ctx1.beginPath();
+  for(let i=0;i<labels.length;i++){ const x=40 + (i/(labels.length-1))*(c1.clientWidth-50); ctx1.moveTo(x,10); ctx1.lineTo(x,c1.clientHeight-24); }
+  ctx1.stroke(); ctx1.globalAlpha=1;
+  drawLine(ctx1, pts.filter(Boolean), "#7db4ff", 2); drawDots(ctx1, pts.filter(Boolean), "#7db4ff");
+  if(s.typicalGoal!=null){ ctx1.setLineDash([6,6]); ctx1.strokeStyle="#2dd36f"; ctx1.beginPath(); const y = mapSeries([s.typicalGoal], c1.clientWidth, c1.clientHeight, min, max)[0].y; ctx1.moveTo(40,y); ctx1.lineTo(c1.clientWidth-10,y); ctx1.stroke(); ctx1.setLineDash([]); }
+  if(s.stretchGoal!=null){ ctx1.setLineDash([4,6]); ctx1.strokeStyle="#ffbf66"; ctx1.beginPath(); const y = mapSeries([s.stretchGoal], c1.clientWidth, c1.clientHeight, min, max)[0].y; ctx1.moveTo(40,y); ctx1.lineTo(c1.clientWidth-10,y); ctx1.stroke(); ctx1.setLineDash([]); }
+
+  // Deltas
+  const c2 = qs("#chartDeltas"); const ctx2 = clearCanvas(c2);
+  const pairs = [["Fall","Winter", deltaBetween(s,"fall","winter")?.delta ?? null],
+                 ["Winter","Spring", deltaBetween(s,"winter","spring")?.delta ?? null]]
+                 .concat(show6?[["Spring","Spring6", deltaBetween(s,"spring","spring6")?.delta ?? null]]:[]);
+  const bw = Math.max(24, Math.floor((c2.clientWidth-60) / Math.max(1,pairs.length*2)));
+  let x = 40;
+  pairs.forEach(([a,b,val])=>{
+    const y0 = c2.clientHeight-24;
+    const scale = 2.0;
+    const h = val==null ? 0 : Math.max(-80, Math.min(80, val*scale));
+    ctx2.fillStyle = val==null ? "#3a4e8d" : (val>=0 ? "#2dd36f" : "#ef4444");
+    const topY = h>=0 ? (y0-h) : y0;
+    ctx2.fillRect(Math.round(x), Math.round(h>=0?topY:y0), bw, Math.max(2, Math.abs(Math.round(h))));
+    ctx2.fillStyle="#cfe0ff"; ctx2.font="12px ui-sans-serif"; ctx2.fillText(`${a}→${b}`, Math.round(x), c2.clientHeight-8);
+    x += bw + 24;
+  });
+
+  // Levels
+  const c3 = qs("#chartLevels"); const ctx3 = clearCanvas(c3);
+  const levs = [s.fall, s.winter, s.spring].concat(show6?[s.spring6]:[]);
+  const w = (c3.clientWidth-60)/Math.max(1,levs.length); let xl=40;
+  levs.forEach(entry=>{
+    const cls = classForEntry(entry) || "lvl-empty";
+    const color = ({
+      "lvl-dark-green":"#0d7a3a","lvl-green":"#22c55e","lvl-yellow":"#facc15","lvl-red":"#ef4444","lvl-dark-red":"#7a1420","lvl-empty":"#2b3a6a"
+    })[cls];
+    ctx3.fillStyle=color; ctx3.strokeStyle="#1b2b58"; ctx3.lineWidth=1.5;
+    ctx3.fillRect(xl, 30, w-10, 40); ctx3.strokeRect(xl,30,w-10,40);
+    ctx3.fillStyle="#e7ecff"; ctx3.font="12px ui-sans-serif"; const txt=(entry?.level?.trim()||"-"); ctx3.fillText(txt, xl+6, 54);
+    xl += w;
+  });
+
+  // Goal gap
+  const c4 = qs("#chartGap"); const ctx4 = clearCanvas(c4);
+  const latest = (()=>{
+    const key = latestVisibleKey(s);
+    return key ? s[key]?.score : null;
+  })();
+  const gaps = [];
+  if(latest!=null && s.typicalGoal!=null) gaps.push(s.typicalGoal - latest);
+  if(latest!=null && s.stretchGoal!=null) gaps.push(s.stretchGoal - latest);
+  const maxGap = Math.max(1, Math.max(...gaps.map(v=>Math.abs(v)||0), 1));
+  const centerY = c4.clientHeight/2; const baseX=40; const barW=60;
+  gaps.forEach((g,i)=>{
+    const x = baseX + i*(barW+30);
+    const h = (Math.min(Math.max(g, -maxGap), maxGap) / maxGap) * (c4.clientHeight/2 - 20);
+    ctx4.fillStyle = (g<=0) ? "#2dd36f" : "#facc15";
+    const y = g<=0 ? (centerY - 2) : (centerY - h);
+    ctx4.fillRect(x, y, barW, Math.abs(h||2)+2);
+    ctx4.fillStyle="#cfe0ff"; ctx4.font="12px ui-sans-serif"; ctx4.fillText((i==0?"Typical":"Stretch")+": "+(g!=null?Math.max(0,Math.round(g)):"—"), x, c4.clientHeight-10);
+  });
+}
+
+/* ===================== Events (toolbars) ===================== */
+qs("#addStudentBtn").addEventListener("click", ()=>{
+  const name = prompt("Student name:");
+  if(!name) return;
+  const o = parseName(name);
+  getActiveClass().students.push(ensureStudent({
+    id:crypto.randomUUID(),
+    name: o?.name || name.trim(),
+    first:o?.first, last:o?.last,
+    fall:{}, winter:{}, spring:{}, spring6:{},
+    typicalGoal:null, stretchGoal:null,
+    tardies:0, note:"", dismissedAtCount:null
+  }));
+  save(); renderAll();
+});
+qs("#toggleSpring6").addEventListener("change", e=>{ state.showSpring6 = e.target.checked; save(); renderDiagnostics(); });
+qs("#nameFormat").addEventListener("change", e=>{ state.nameFormat = e.target.value; save(); renderAll(); });
+qs("#searchBox").addEventListener("input", e=>{ state.search = e.target.value; save(); renderDiagnostics(); });
+qs("#toggleRemove").addEventListener("click", ()=>{ state.showRemove = !state.showRemove; save(); renderDiagnostics(); });
+
+qs("#resetTardies").addEventListener("click", ()=>{
+  const cls = getActiveClass();
+  if(!cls.students.length) return;
+  if(!confirm(`Reset tardies for all students in ${cls.name}?`)) return;
+  cls.students.forEach(s=>{ s.tardies=0; s.dismissedAtCount=null; });
+  save(); renderTardies();
+});
+qs("#tardySearch").addEventListener("input", renderTardies);
+qs("#nameFormat2").addEventListener("change", e=>{ state.nameFormat = e.target.value; save(); renderAll(); });
+
+/* Sorting header (Diagnostics) */
+qsa(".th .sort").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const k = btn.dataset.sort;
+    if(state.sort.key===k) state.sort.dir *= -1; else { state.sort.key=k; state.sort.dir=1; }
+    save(); renderDiagnostics();
+  });
+});
+
+/* ===================== Keyboard Shortcuts ===================== */
+document.addEventListener("keydown",(ev)=>{
+  if(ev.target.matches("input, textarea")) return;
+  if(ev.key==="/"){ ev.preventDefault();
+    if(state.activeScreen==="diagnostics") qs("#searchBox").focus();
+    else if(state.activeScreen==="tardies") qs("#tardySearch").focus();
+    else if(state.activeScreen.startsWith("custom:")) qs("#customSearch")?.focus();
+    return;
+  }
+  if(ev.key==="d"){ state.activeScreen="diagnostics"; save(); applyScreen(); return; }
+  if(ev.key==="t"){ state.activeScreen="tardies"; save(); applyScreen(); return; }
+  if(ev.key==="s"){ if(state.activeScreen==="diagnostics"){ state.showSpring6=!state.showSpring6; save(); renderDiagnostics(); } return; }
+  if(ev.key==="1"||ev.key==="2"||ev.key==="3"){
+    if(state.activeScreen==="diagnostics"){
+      const keys = { "1":"fall", "2":"winter", "3":"spring" };
+      const k = keys[ev.key]; const cls = getActiveClass(); cls.columns[k] = !cls.columns[k]; save(); renderDiagnostics();
+    }
+    return;
+  }
+  if(ev.key==="n"){ if(state.activeScreen==="diagnostics") qs("#addStudentBtn").click(); return; }
+  if(ev.key==="b"){ if(state.activeScreen==="diagnostics") openBulkModal(); return; }
+  if(ev.key==="?"){ openShortcuts(); return; }
+  if(ev.key==="g"){ if(state.activeScreen==="diagnostics") columnsBtn.click(); return; }
+});
+
+/* ===================== Initial Render ===================== */
+function renderAll(){
+  document.body.setAttribute("data-theme", state.theme || "navy");
+  renderClassTabs();
+  renderAppNav();
+  applyScreen();
+}
+renderAll();
+</script>
+</body>
+</html>
