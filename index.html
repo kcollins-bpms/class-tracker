@@ -344,6 +344,47 @@
   /* Subtle focus cue for text inputs */
   .text-cell .text-input:focus{ box-shadow: inset 0 0 0 1px var(--accent) !important; }
 
+  /* Checkbox cells */
+  .checkbox-cell{ display:flex; align-items:center; }
+  .cb-chip{
+    width:40px; height:32px; border-radius:10px; border:1px solid var(--chip-border);
+    background:var(--panel-bg); color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; cursor:pointer;
+  }
+  .cb-chip.checked{ background:var(--ok); color:#041222; }
+
+  /* Counter cells */
+  .counter-cell{ display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+  .counter-dec, .counter-inc{
+    width:32px; height:32px; border-radius:10px; border:1px solid var(--chip-border);
+    background:var(--btn-bg); color:var(--text);
+    font-size:20px; cursor:pointer;
+  }
+  .counter-val{
+    min-width:40px; text-align:center; padding:6px 10px; border-radius:10px; border:1px solid var(--chip-border);
+    background:var(--panel-bg); font-weight:700;
+  }
+  .counter-cell[data-color="green"] .counter-val{ background:var(--lvl-green); color:#07220f; }
+  .counter-cell[data-color="yellow"] .counter-val{ background:var(--lvl-yellow); color:#231a00; }
+  .counter-cell[data-color="red"] .counter-val{ background:var(--lvl-red); color:#fff3f3; }
+  .counter-note{
+    width:100%; margin-top:4px; padding:6px 8px; border-radius:10px; border:1px solid var(--chip-border);
+    background:var(--panel-bg); color:var(--text);
+  }
+
+  /* Dropdown cells */
+  .dropdown-cell{ display:flex; align-items:center; gap:6px; }
+  .dropdown-cell select{
+    padding:6px 8px; border-radius:10px; border:1px solid var(--chip-border);
+    background:var(--panel-bg); color:var(--text);
+  }
+  .dropdown-chip{
+    padding:6px 8px; border-radius:10px; border:1px solid var(--chip-border);
+    background:var(--panel-bg); color:var(--text);
+    min-width:64px; text-align:center; font-weight:700;
+  }
+
 </style>
 </head>
 <body data-theme="navy">
@@ -458,6 +499,13 @@
       <div style="margin-bottom:8px;" class="muted">Theme</div>
       <div class="theme-grid" id="themeGrid"></div>
       <p class="muted" style="margin-top:10px">Click a chip to switch themes. Navy is the default.</p>
+
+      <div class="divider"></div>
+      <div style="margin-bottom:8px;" class="muted">Celebrations</div>
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="celebrationsToggle" />
+        <span>Enable celebrations</span>
+      </label>
     </section>
   </div>
 
@@ -616,10 +664,13 @@ Weasley, Ron"></textarea>
 
       <div class="divider"></div>
       <h4 style="margin:8px 0">Columns</h4>
-      <div class="muted-note">Add numeric or text columns. Drag to reorder. Numeric columns can show a color chip based on ranges.</div>
+      <div class="muted-note">Add numeric, text, checkbox, counter or dropdown columns. Drag to reorder. Numeric and counter columns can show a color chip based on ranges.</div>
       <div style="display:flex; gap:8px; margin:8px 0;">
         <button id="tbAddNum" class="btn">+ Add Numeric</button>
         <button id="tbAddTxt" class="btn">+ Add Text</button>
+        <button id="tbAddChk" class="btn">+ Add Checkbox</button>
+        <button id="tbAddCnt" class="btn">+ Add Counter</button>
+        <button id="tbAddDD" class="btn">+ Add Dropdown</button>
       </div>
       <div id="tbCols" class="cols-list"></div>
 
@@ -666,6 +717,8 @@ const DEFAULT_DATA = {
   customTabs: [],
   tabsVisibility: { diagnostics:true, tardies:true },
   customSort: {},
+  celebrations: true,
+  customFilters: {},
   _lastSavedAt: Date.now()
 };
 
@@ -720,6 +773,8 @@ function ensureState(state){
   s.customTabs ??= [];
   s.tabsVisibility ??= { diagnostics:true, tardies:true };
   s.customSort ??= {};
+  s.celebrations ??= true;
+  s.customFilters ??= {};
   s._lastSavedAt ??= Date.now();
   return s;
 }
@@ -781,6 +836,66 @@ const qs = (sel, el=document)=>el.querySelector(sel);
 const qsa = (sel, el=document)=>Array.from(el.querySelectorAll(sel));
 function getActiveClass(){ return state.classes.find(c=>c.id===state.activeClassId) || state.classes[0]; }
 function keepScroll(fn){ const y=scrollY, x=scrollX; fn(); scrollTo(x,y); }
+
+/* ===================== Celebrations / Confetti ===================== */
+// Simple confetti animation used for checkbox and full-column celebrations.
+// It respects the global `state.celebrations` setting and the user's prefers-reduced-motion.
+function showConfetti(x, y, opts = {}){
+  if(!state.celebrations) return;
+  try{
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion)').matches) return;
+  }catch(e){}
+  const full = opts.full || false;
+  const count = full ? 120 : (opts.count || 30);
+  const canvas = document.createElement('canvas');
+  canvas.style.position = 'fixed';
+  canvas.style.left = '0';
+  canvas.style.top = '0';
+  canvas.style.pointerEvents = 'none';
+  const w = canvas.width = window.innerWidth;
+  const h = canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const colors = ['#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#f48fb1','#26c6da'];
+  const pieces = [];
+  for(let i=0;i<count;i++){
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = full ? 4 + Math.random()*4 : 2 + Math.random()*3;
+    const size = 4 + Math.random()*6;
+    let px, py;
+    if(full){
+      px = Math.random() * w;
+      py = Math.random() * h;
+    }else{
+      px = (x != null ? x : w/2);
+      py = (y != null ? y : h/2);
+    }
+    const shape = Math.random() < 0.5 ? 'rect' : 'circle';
+    pieces.push({x:px, y:py, vx: speed * Math.cos(angle), vy: speed * Math.sin(angle), size, color: colors[Math.floor(Math.random()*colors.length)], shape});
+  }
+  function step(){
+    ctx.clearRect(0,0,w,h);
+    pieces.forEach(p=>{
+      p.vy += 0.15;
+      p.x += p.vx;
+      p.y += p.vy;
+      ctx.fillStyle = p.color;
+      if(p.shape === 'rect'){
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      }else{
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size/2, 0, Math.PI*2);
+        ctx.fill();
+      }
+    });
+    if(pieces.some(p => p.y < h + 50)){
+      requestAnimationFrame(step);
+    } else {
+      canvas.remove();
+    }
+  }
+  step();
+}
 
 /* ===================== Name/Levels Helpers ===================== */
 function inferColorFromText(label){
@@ -1424,6 +1539,16 @@ function renderThemeChips(){
   });
 }
 
+// Initialize and handle celebrations toggle in Settings
+const celeToggle = qs("#celebrationsToggle");
+if(celeToggle){
+  celeToggle.checked = !!state.celebrations;
+  celeToggle.addEventListener("change", e=>{
+    state.celebrations = e.target.checked;
+    save();
+  });
+}
+
 /* Manage Tabs Modal */
 const manageTabsModal = qs("#manageTabsModal");
 function openManageTabs(){
@@ -1537,8 +1662,31 @@ function renderCustomTab(tabId){
     th.dataset.colId = col.id;
     th.textContent = col.name + " ";
     const s = document.createElement("span"); s.className="sort"; s.dataset.sort=col.id; s.textContent="↕";
-    s.addEventListener("click", ()=> sortCustom(tabId, col.id));
+    if(col.type !== "checkbox"){
+      s.addEventListener("click", ()=> sortCustom(tabId, col.id));
+    } else {
+      s.style.opacity = 0.3;
+      s.style.cursor = "default";
+    }
     th.appendChild(s);
+    // Reset button for counter columns
+    if(col.type === "counter"){
+      const rbtn = document.createElement("button"); rbtn.type="button"; rbtn.className="icon-btn"; rbtn.textContent = "↺";
+      rbtn.title = "Reset all";
+      rbtn.addEventListener("click", ()=>{
+        if(!confirm(`Reset all values for "${col.name}"?`)) return;
+        const cls = getActiveClass();
+        cls.students.forEach(stu=>{
+          stu.customData ??= {};
+          stu.customData[tab.id] ??= {};
+          const ccell = stu.customData[tab.id][col.id] ??= {};
+          ccell.value = 0;
+          if(ccell.note !== undefined) ccell.note = "";
+        });
+        save(); renderCustomTab(tabId);
+      });
+      th.appendChild(rbtn);
+    }
 
     th.addEventListener("dragstart", ev=>{ ev.dataTransfer.setData("text/plain", col.id); ev.dataTransfer.effectAllowed="move"; });
     th.addEventListener("dragover", ev=> ev.preventDefault());
@@ -1557,38 +1705,128 @@ function renderCustomTab(tabId){
   });
   trh.appendChild(document.createElement("th")); // spacer
   thead.appendChild(trh);
+  // Create filter row
+  const trf = document.createElement("tr"); trf.className = "tr";
+  const thfName = document.createElement("th"); thfName.className="th";
+  trf.appendChild(thfName);
+  const filters = state.customFilters[tabId] || {};
+  tab.columns.forEach(col=>{
+    const thf = document.createElement("th"); thf.className="th";
+    if(col.type === "dropdown"){
+      const sel = document.createElement("select"); sel.className="select";
+      const optAll = document.createElement("option"); optAll.value=""; optAll.textContent="All";
+      sel.appendChild(optAll);
+      (col.options||[]).forEach(opt=>{
+        const o = document.createElement("option"); o.value = opt; o.textContent = opt; sel.appendChild(o);
+      });
+      sel.value = filters[col.id] || "";
+      sel.addEventListener("change", ()=>{
+        state.customFilters[tabId] ??= {};
+        state.customFilters[tabId][col.id] = sel.value;
+        save(); renderCustomTab(tabId);
+      });
+      thf.appendChild(sel);
+    } else if(col.type === "counter" || col.type === "num"){
+      const inp = document.createElement("input"); inp.className="search";
+      inp.style.minWidth = "60px";
+      inp.placeholder = "Filter";
+      inp.value = filters[col.id] || "";
+      function apply(){
+        state.customFilters[tabId] ??= {};
+        state.customFilters[tabId][col.id] = inp.value.trim();
+        save(); renderCustomTab(tabId);
+      }
+      inp.addEventListener("keydown", ev=>{ if(ev.key === "Enter"){ ev.preventDefault(); apply(); }});
+      inp.addEventListener("blur", apply);
+      thf.appendChild(inp);
+    }
+    trf.appendChild(thf);
+  });
+  trf.appendChild(document.createElement("th"));
+  thead.appendChild(trf);
 
   const cls = getActiveClass();
   let students = [...cls.students];
 
-  // search filter: names + text cols (opt-in)
+  // Apply search and column filters
+  // reuse filter values; avoid redeclaring 'filters' twice
+  const colFilters = state.customFilters[tabId] || {};
   const q = (state.search||"").toLowerCase().trim();
-  if(q){
-    students = students.filter(st=>{
-      if(fmtName(st).toLowerCase().includes(q)) return true;
-      for(const col of tab.columns){
-        if(col.type==="text" && (col.inSearch===true || col.inSearch==="true")){
-          const cell = (((st.customData||{})[tab.id]||{})[col.id]||{}).text || "";
-          if((cell+"").toLowerCase().includes(q)) return true;
+  students = students.filter(st=>{
+    // search by name or columns
+    if(q){
+      let found = false;
+      if(fmtName(st).toLowerCase().includes(q)){
+        found = true;
+      } else {
+        for(const col of tab.columns){
+          const dataCell = (((st.customData||{})[tab.id]||{})[col.id]||{});
+          if(col.type === "text" && (col.inSearch===true || col.inSearch==="true")){
+            const txt = (dataCell.text || "").toLowerCase();
+            if(txt.includes(q)){ found=true; break; }
+          } else if(col.type === "counter" || col.type === "num"){
+            const v = dataCell.value;
+            if(v != null && !isNaN(v) && (String(v).toLowerCase().includes(q))){ found=true; break; }
+          } else if(col.type === "dropdown"){
+            const v = (dataCell.value || "").toLowerCase();
+            if(v.includes(q)){ found=true; break; }
+          }
         }
       }
-      return false;
-    });
-  }
+      if(!found) return false;
+    }
+    // column filters
+    for(const col of tab.columns){
+      const f = colFilters[col.id];
+      if(!f || f === "") continue;
+      const dataCell = (((st.customData||{})[tab.id]||{})[col.id]||{});
+      if(col.type === "dropdown"){
+        const v = dataCell.value || "";
+        if(v !== f) return false;
+      } else if(col.type === "counter" || col.type === "num"){
+        const v = dataCell.value;
+        if(v == null || isNaN(v)) return false;
+        const m = f.match(/^\s*(<=|>=|=)?\s*(-?\d+(?:\.\d+)?)\s*$/);
+        if(m){
+          const op = m[1] || ">=";
+          const tgt = Number(m[2]);
+          if(op === "=" && v != tgt) return false;
+          if(op === ">=" && v < tgt) return false;
+          if(op === "<=" && v > tgt) return false;
+        } else {
+          const fv = Number(f);
+          if(!isNaN(fv)){
+            if(v < fv) return false;
+          }
+        }
+      }
+    }
+    return true;
+  });
 
   // sort
   const sst = state.customSort[tabId] || {key:"name", dir:1};
   students.sort((a,b)=>{
     const getVal = (stu)=>{
-      if(sst.key==="name") return fmtName(stu).toLowerCase();
+      if(sst.key === "name") return fmtName(stu).toLowerCase();
       const col = tab.columns.find(c=>c.id===sst.key);
       if(!col) return 0;
       const cell = (((stu.customData||{})[tab.id]||{})[col.id]||{});
-      return col.type==="num" ? (cell.value ?? -Infinity) : (cell.text||"").toLowerCase();
+      if(col.type === "num" || col.type === "counter"){
+        const v = cell.value;
+        return (v == null || isNaN(v)) ? -Infinity : Number(v);
+      } else if(col.type === "dropdown"){
+        return (cell.value || "").toLowerCase();
+      } else if(col.type === "checkbox"){
+        return cell.value ? 1 : 0;
+      } else if(col.type === "text"){
+        return (cell.text || "").toLowerCase();
+      }
+      return 0;
     };
-    const va=getVal(a), vb=getVal(b);
-    if(va<vb) return -1*sst.dir;
-    if(va>vb) return 1*sst.dir;
+    const va = getVal(a), vb = getVal(b);
+    if(va < vb) return -1 * sst.dir;
+    if(va > vb) return 1 * sst.dir;
     return 0;
   });
 
@@ -1653,48 +1891,175 @@ function renderCustomTab(tabId){
         }
         td.appendChild(wrapN);
       }else{
-        const store = (st.customData ||= {});
-      const slot = (store[tab.id] ||= {});
-      slot[col.id] ||= { text:"", bg:null };
-      const cell = slot[col.id];
-
-      const wrapT = document.createElement("div"); wrapT.className="text-cell";
-      const ta = document.createElement("textarea");
-      ta.className = "text-input";
-      ta.rows = col.multiline ? 3 : 1;
-      ta.placeholder = col.name || "Text";
-      ta.value = cell.text || "";
-      // live-update model and debounce save to avoid losing edits on re-render/search
-      let _svTimer = null;
-      function _debouncedSave(){ if(_svTimer) clearTimeout(_svTimer); _svTimer = setTimeout(()=>{ try{ save(); }catch(e){} }, 300); }
-      ta.addEventListener("input", ()=>{ cell.text = ta.value; _debouncedSave(); });
-      if(cell.bg){ ta.classList.add("has-bg"); ta.style.background = cell.bg; }
-      const palBtn = document.createElement("button"); palBtn.className="palette-btn"; palBtn.title="Cell color"; palBtn.textContent="🎨";
-let pop = null;
-function applyColor(hex){
-  cell.bg = hex || null;
-  if(cell.bg){ ta.classList.add("has-bg"); ta.style.background = cell.bg; } else { ta.classList.remove("has-bg"); ta.style.background=""; }
-  save();
-}
-palBtn.addEventListener("click", (ev)=>{
-  ev.stopPropagation();
-  if(pop && pop.style.display==="block"){ pop.style.display="none"; return; }
-  if(!pop){
-    pop = document.createElement("div"); pop.className="color-pop";
-    const row = document.createElement("div"); row.className="color-row";
-    const colors=["#e53935","#fb8c00","#fdd835","#43a047","#1e88e5","#8e24aa","#9e9e9e"];
-    colors.forEach(c=>{ const b=document.createElement("button"); b.className="color-chip"; b.style.background=c; b.title=c; b.addEventListener("click", ()=>{ applyColor(c); pop.style.display="none"; }); row.appendChild(b); });
-    const clr=document.createElement("button"); clr.className="color-chip clear"; clr.textContent="Clear"; clr.addEventListener("click", ()=>{ applyColor(null); pop.style.display="none"; });
-    pop.append(row, clr); document.body.appendChild(pop);
-  }
-  const r = palBtn.getBoundingClientRect();
-  pop.style.left = Math.round(r.left) + "px";
-  pop.style.top  = Math.round(r.bottom + 6) + "px";
-  pop.style.display = "block";
-});
-document.addEventListener("mousedown", (e)=>{ if(pop && !pop.contains(e.target) && e.target!==palBtn){ pop.style.display="none"; }});
-wrapT.append(ta, palBtn);
-      td.appendChild(wrapT);
+        // Render other column types: text, checkbox, counter, dropdown
+        // Ensure custom data structure exists
+        st.customData ??= {};
+        st.customData[tab.id] ??= {};
+        // Initialize cell if missing based on column type
+        let cell = st.customData[tab.id][col.id];
+        if(cell === undefined){
+          if(col.type === "text"){
+            cell = st.customData[tab.id][col.id] = { text:"", bg:null };
+          } else if(col.type === "checkbox"){
+            cell = st.customData[tab.id][col.id] = { value:false };
+          } else if(col.type === "counter"){
+            cell = st.customData[tab.id][col.id] = { value:0 };
+            if(col.noteEnabled){ cell.note = ""; }
+          } else if(col.type === "dropdown"){
+            cell = st.customData[tab.id][col.id] = { value:"" };
+          } else {
+            cell = st.customData[tab.id][col.id] = { text:"", bg:null };
+          }
+        }
+        if(col.type === "text"){
+          // TEXT cell rendering
+          const wrapT = document.createElement("div"); wrapT.className="text-cell";
+          const ta = document.createElement("textarea");
+          ta.className = "text-input";
+          ta.rows = col.multiline ? 3 : 1;
+          ta.placeholder = col.name || "Text";
+          ta.value = cell.text || "";
+          // live-update model and debounce save to avoid losing edits on re-render/search
+          let _svTimer = null;
+          function _debouncedSave(){ if(_svTimer) clearTimeout(_svTimer); _svTimer = setTimeout(()=>{ try{ save(); }catch(e){} }, 300); }
+          ta.addEventListener("input", ()=>{ cell.text = ta.value; _debouncedSave(); });
+          if(cell.bg){ ta.classList.add("has-bg"); ta.style.background = cell.bg; }
+          const palBtn = document.createElement("button"); palBtn.className="palette-btn"; palBtn.title="Cell color"; palBtn.textContent="🎨";
+          let pop = null;
+          function applyColor(hex){
+            cell.bg = hex || null;
+            if(cell.bg){ ta.classList.add("has-bg"); ta.style.background = cell.bg; } else { ta.classList.remove("has-bg"); ta.style.background=""; }
+            save();
+          }
+          palBtn.addEventListener("click", (ev)=>{
+            ev.stopPropagation();
+            if(pop && pop.style.display==="block"){ pop.style.display="none"; return; }
+            if(!pop){
+              pop = document.createElement("div"); pop.className="color-pop";
+              const rowDiv = document.createElement("div"); rowDiv.className="color-row";
+              const colors=["#e53935","#fb8c00","#fdd835","#43a047","#1e88e5","#8e24aa","#9e9e9e"];
+              colors.forEach(c=>{ const b=document.createElement("button"); b.className="color-chip"; b.style.background=c; b.title=c; b.addEventListener("click", ()=>{ applyColor(c); pop.style.display="none"; }); rowDiv.appendChild(b); });
+              const clr=document.createElement("button"); clr.className="color-chip clear"; clr.textContent="Clear"; clr.addEventListener("click", ()=>{ applyColor(null); pop.style.display="none"; });
+              pop.append(rowDiv, clr); document.body.appendChild(pop);
+            }
+            const r = palBtn.getBoundingClientRect();
+            pop.style.left = Math.round(r.left) + "px";
+            pop.style.top  = Math.round(r.bottom + 6) + "px";
+            pop.style.display = "block";
+          });
+          document.addEventListener("mousedown", (e)=>{ if(pop && !pop.contains(e.target) && e.target!==palBtn){ pop.style.display="none"; }});
+          wrapT.append(ta, palBtn);
+          td.appendChild(wrapT);
+        } else if(col.type === "checkbox"){
+          // CHECKBOX cell rendering
+          const wrapC = document.createElement("div"); wrapC.className = "checkbox-cell";
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "cb-chip";
+          function refreshCb(){
+            if(cell.value){ btn.classList.add("checked"); btn.textContent = "✔"; }
+            else { btn.classList.remove("checked"); btn.textContent = "—"; }
+          }
+          btn.addEventListener("click", (ev)=>{
+            cell.value = !cell.value;
+            save();
+            refreshCb();
+            // small confetti burst
+            const rect = btn.getBoundingClientRect();
+            showConfetti(rect.left + rect.width/2, rect.top + rect.height/2);
+            // full column celebration if all boxes checked
+            const allChecked = getActiveClass().students.every(stu=>{
+              const dat = (((stu.customData||{})[tab.id]||{})[col.id]||{});
+              return dat.value===true;
+            });
+            if(allChecked){
+              setTimeout(()=>{ showConfetti(0,0,{full:true}); }, 150);
+            }
+          });
+          refreshCb();
+          wrapC.appendChild(btn);
+          td.appendChild(wrapC);
+        } else if(col.type === "counter"){
+          // COUNTER cell rendering
+          const wrapCounter = document.createElement("div"); wrapCounter.className="counter-cell";
+          function applyColorRange(){
+            const v = cell.value;
+            let colorClass = "";
+            const ranges = col.ranges || {};
+            if(v != null && !isNaN(v)){
+              const num = Number(v);
+              if(ranges.green && ranges.green.length===2 && !isNaN(ranges.green[0]) && !isNaN(ranges.green[1]) && num >= ranges.green[0] && num <= ranges.green[1]) colorClass = "green";
+              else if(ranges.yellow && ranges.yellow.length===2 && !isNaN(ranges.yellow[0]) && !isNaN(ranges.yellow[1]) && num >= ranges.yellow[0] && num <= ranges.yellow[1]) colorClass = "yellow";
+              else if(ranges.red && ranges.red.length===2 && !isNaN(ranges.red[0]) && !isNaN(ranges.red[1]) && num >= ranges.red[0] && num <= ranges.red[1]) colorClass = "red";
+            }
+            wrapCounter.dataset.color = colorClass;
+          }
+          const decBtn = document.createElement("button"); decBtn.type="button"; decBtn.className="counter-dec"; decBtn.textContent="−";
+          const incBtn = document.createElement("button"); incBtn.type="button"; incBtn.className="counter-inc"; incBtn.textContent="+";
+          const valSpan = document.createElement("span"); valSpan.className="counter-val";
+          function refreshCounter(){
+            valSpan.textContent = (cell.value==null || isNaN(cell.value))? "0" : cell.value;
+            applyColorRange();
+          }
+          function change(delta){
+            let newVal = (cell.value==null || isNaN(cell.value)) ? 0 : Number(cell.value);
+            newVal += delta;
+            if(col.min!=null && col.min!=="" && newVal < Number(col.min)) newVal = Number(col.min);
+            if(col.max!=null && col.max!=="" && newVal > Number(col.max)) newVal = Number(col.max);
+            cell.value = newVal;
+            save();
+            refreshCounter();
+          }
+          decBtn.addEventListener("click", ()=> change(-1));
+          incBtn.addEventListener("click", ()=> change(1));
+          refreshCounter();
+          wrapCounter.append(decBtn, valSpan, incBtn);
+          if(col.noteEnabled){
+            const noteInp = document.createElement("input"); noteInp.className="counter-note"; noteInp.placeholder="Note";
+            noteInp.value = cell.note || "";
+            noteInp.addEventListener("input", ()=>{ cell.note = noteInp.value; save(); });
+            wrapCounter.appendChild(noteInp);
+          }
+          td.appendChild(wrapCounter);
+        } else if(col.type === "dropdown"){
+          // DROPDOWN cell rendering
+          const wrapD = document.createElement("div"); wrapD.className="dropdown-cell";
+          const select = document.createElement("select");
+          const options = col.options || [];
+          // ensure current value is valid
+          if(cell.value && !options.includes(cell.value)){
+            cell.value = "";
+            save();
+          }
+          const blankOpt = document.createElement("option"); blankOpt.value=""; blankOpt.textContent="—";
+          select.appendChild(blankOpt);
+          options.forEach(opt=>{
+            const o = document.createElement("option"); o.value = opt; o.textContent = opt; select.appendChild(o);
+          });
+          select.value = cell.value || "";
+          select.addEventListener("change", ()=>{
+            cell.value = select.value;
+            save();
+            refreshDd();
+          });
+          // Chip showing selection
+          const pill = document.createElement("span"); pill.className="dropdown-chip";
+          function refreshDd(){
+            pill.textContent = cell.value || "—";
+          }
+          select.addEventListener("change", refreshDd);
+          refreshDd();
+          wrapD.append(select, pill);
+          td.appendChild(wrapD);
+        } else {
+          // Fallback: simple text
+          const wrapF = document.createElement("div"); wrapF.className="text-cell";
+          const inp = document.createElement("input"); inp.type="text"; inp.value = cell.text || "";
+          inp.placeholder = col.name || "Text";
+          inp.addEventListener("input", ()=>{ cell.text = inp.value; save(); });
+          wrapF.appendChild(inp);
+          td.appendChild(wrapF);
+        }
       }
 
       tr.appendChild(td);
@@ -1745,7 +2110,7 @@ function openTabBuilder(editTabId){
   }
 
   function addNumericCol(init={}){
-    const row = document.createElement("div"); row.className="col-item"; row.dataset.colId = init.id || "";
+    const row = document.createElement("div"); row.className="col-item"; row.dataset.colId = init.id || ""; row.dataset.type = "num";
     row.innerHTML = `
       <div class="drag">⋮⋮</div>
       <div>
@@ -1824,7 +2189,7 @@ function openTabBuilder(editTabId){
     makeDragList(qs("#tbCols"));
   }
   function addTextCol(init={}){
-    const row = document.createElement("div"); row.className="col-item"; row.dataset.colId = init.id || ""; row.dataset.colId = init.id || "";
+    const row = document.createElement("div"); row.className="col-item"; row.dataset.colId = init.id || ""; row.dataset.type = "text";
     row.innerHTML = `
       <div class="drag">⋮⋮</div>
       <div>
@@ -1851,18 +2216,121 @@ function openTabBuilder(editTabId){
     makeDragList(qs("#tbCols"));
   }
 
+  // Add a checkbox column
+  function addCheckboxCol(init={}){
+    const row = document.createElement("div");
+    row.className = "col-item";
+    row.dataset.colId = init.id || "";
+    row.dataset.type = "checkbox";
+    row.innerHTML = `
+      <div class="drag">⋮⋮</div>
+      <div>
+        <div class="field"><label>Column name</label><input class="nm" placeholder="e.g., Complete" value="${init.name||""}"></div>
+      </div>
+      <div><button class="btn bad rm">Remove</button></div>
+    `;
+    row.querySelector(".rm").addEventListener("click", ()=> row.remove());
+    qs("#tbCols").appendChild(row);
+    makeDragList(qs("#tbCols"));
+  }
+
+  // Add a counter column (with optional note field and min/max)
+  function addCounterCol(init={}){
+    const row = document.createElement("div");
+    row.className = "col-item";
+    row.dataset.colId = init.id || "";
+    row.dataset.type = "counter";
+    // allow ranges similar to numeric
+    const minVal = (init.min!==undefined && init.min!==null) ? init.min : "";
+    const maxVal = (init.max!==undefined && init.max!==null) ? init.max : "";
+    const noteEn = init.noteEnabled ? true : false;
+    // ranges for conditional formatting
+    const rg = init.ranges || {};
+    function rngVal(p){ return (rg && rg[p] && rg[p][0]!=null) ? rg[p][0] : ""; }
+    function rngVal2(p){ return (rg && rg[p] && rg[p][1]!=null) ? rg[p][1] : ""; }
+    row.innerHTML = `
+      <div class="drag">⋮⋮</div>
+      <div>
+        <div class="field"><label>Column name</label><input class="nm" placeholder="e.g., Count" value="${init.name||""}"></div>
+        <div style="display:grid; grid-template-columns: repeat(2,1fr); gap:8px; margin-top:6px;">
+          <div class="field"><label>Min</label><input type="number" class="min" value="${minVal}"></div>
+          <div class="field"><label>Max</label><input type="number" class="max" value="${maxVal}"></div>
+        </div>
+        <div class="field" style="margin-top:6px;"><label>Enable note</label>
+          <select class="note">
+            <option value="false"${noteEn? "" : " selected"}>No</option>
+            <option value="true"${noteEn? " selected" : ""}>Yes</option>
+          </select>
+        </div>
+        <div class="divider"></div>
+        <div class="field"><label>Green range [min,max]</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input type="number" class="gmin" value="${rngVal('green')}">
+            <input type="number" class="gmax" value="${rngVal2('green')}">
+          </div>
+        </div>
+        <div class="field"><label>Yellow range [min,max]</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input type="number" class="ymin" value="${rngVal('yellow')}">
+            <input type="number" class="ymax" value="${rngVal2('yellow')}">
+          </div>
+        </div>
+        <div class="field"><label>Red range [min,max]</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <input type="number" class="rmin" value="${rngVal('red')}">
+            <input type="number" class="rmax" value="${rngVal2('red')}">
+          </div>
+        </div>
+      </div>
+      <div><button class="btn bad rm">Remove</button></div>
+    `;
+    row.querySelector(".rm").addEventListener("click", ()=> row.remove());
+    qs("#tbCols").appendChild(row);
+    makeDragList(qs("#tbCols"));
+  }
+
+  // Add a dropdown column
+  function addDropdownCol(init={}){
+    const row = document.createElement("div");
+    row.className = "col-item";
+    row.dataset.colId = init.id || "";
+    row.dataset.type = "dropdown";
+    const opts = (init.options||[]).join(", ");
+    row.innerHTML = `
+      <div class="drag">⋮⋮</div>
+      <div>
+        <div class="field"><label>Column name</label><input class="nm" placeholder="e.g., Category" value="${init.name||""}"></div>
+        <div class="field" style="margin-top:6px;"><label>Options (comma separated)</label><input class="opts" value="${opts}" placeholder="Yes, No, Maybe"></div>
+      </div>
+      <div><button class="btn bad rm">Remove</button></div>
+    `;
+    row.querySelector(".rm").addEventListener("click", ()=> row.remove());
+    qs("#tbCols").appendChild(row);
+    makeDragList(qs("#tbCols"));
+  }
+
   
   // Pre-fill when editing
-  if(editing){ existingCols.forEach(col=>{ (col.type==="num" ? addNumericCol : addTextCol)(col); }); }
-qs("#tbAddNum").onclick = ()=> addNumericCol();
+  if(editing){ existingCols.forEach(col=>{
+    if(col.type === "num") addNumericCol(col);
+    else if(col.type === "text") addTextCol(col);
+    else if(col.type === "checkbox") addCheckboxCol(col);
+    else if(col.type === "counter") addCounterCol(col);
+    else if(col.type === "dropdown") addDropdownCol(col);
+  }); }
+  qs("#tbAddNum").onclick = ()=> addNumericCol();
   qs("#tbAddTxt").onclick = ()=> addTextCol();
+  qs("#tbAddChk").onclick = ()=> addCheckboxCol();
+  qs("#tbAddCnt").onclick = ()=> addCounterCol();
+  qs("#tbAddDD").onclick = ()=> addDropdownCol();
 
   qs("#tbCancel").onclick = ()=>{ tabBuilderModal.classList.remove("open"); tabBuilderModal.setAttribute("aria-hidden","true"); };
   qs("#tbSave").onclick = ()=>{
     const name = qs("#tbName").value.trim() || "Custom";
     const cols=[];
     qsa("#tbCols .col-item").forEach(row=>{
-      if(row.querySelector(".gmin")){ // numeric
+      const t = row.dataset.type || (row.querySelector(".gmin") ? "num" : "text");
+      if(t === "num"){
         cols.push({
           id: row.dataset.colId || crypto.randomUUID(), type:"num",
           name: row.querySelector(".nm").value.trim() || "Column",
@@ -1878,12 +2346,39 @@ qs("#tbAddNum").onclick = ()=> addNumericCol();
             red:[Number(row.querySelector(".rmin").value), Number(row.querySelector(".rmax").value)],
           }
         });
-      }else{ // text
+      } else if(t === "text"){
         cols.push({
           id: row.dataset.colId || crypto.randomUUID(), type:"text",
           name: row.querySelector(".nm").value.trim() || "Text",
           multiline: row.querySelector(".mult").value==="true",
           inSearch: row.querySelector(".srch").value==="true",
+        });
+      } else if(t === "checkbox"){
+        cols.push({
+          id: row.dataset.colId || crypto.randomUUID(), type:"checkbox",
+          name: row.querySelector(".nm").value.trim() || "Checkbox"
+        });
+      } else if(t === "counter"){
+        const ranges = {
+          green:[Number(row.querySelector(".gmin").value), Number(row.querySelector(".gmax").value)],
+          yellow:[Number(row.querySelector(".ymin").value), Number(row.querySelector(".ymax").value)],
+          red:[Number(row.querySelector(".rmin").value), Number(row.querySelector(".rmax").value)]
+        };
+        cols.push({
+          id: row.dataset.colId || crypto.randomUUID(), type:"counter",
+          name: row.querySelector(".nm").value.trim() || "Counter",
+          min: row.querySelector(".min").value === "" ? null : Number(row.querySelector(".min").value),
+          max: row.querySelector(".max").value === "" ? null : Number(row.querySelector(".max").value),
+          noteEnabled: row.querySelector(".note").value === "true",
+          ranges: ranges
+        });
+      } else if(t === "dropdown"){
+        const optsStr = row.querySelector(".opts").value;
+        const opts = optsStr.split(",").map(s=>s.trim()).filter(v=>v);
+        cols.push({
+          id: row.dataset.colId || crypto.randomUUID(), type:"dropdown",
+          name: row.querySelector(".nm").value.trim() || "Dropdown",
+          options: opts
         });
       }
     });
