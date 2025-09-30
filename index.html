@@ -450,14 +450,118 @@ input, select, textarea { background: var(--field-bg) !important; color: var(--t
 </style>
 
 
-<style id="fx-ui-css-compact">
-/* Compact Checkbox FX row */
-.fx-grid{display:grid;grid-template-columns:1.2fr .6fr .6fr;gap:12px}
-@media (max-width: 860px){ .fx-grid{grid-template-columns:1fr} }
-.fx-field label{display:block;font-size:13px;opacity:.9;margin:0 0 6px}
-.fx-field .control{width:100%;max-width:100%}
-.fx-field select.control,
-.fx-field input.control{background:var(--field-bg,var(--chip,#142a5a));color:var(--text,#f6f7fb);border:1px solid var(--panel-border,#35518e);border-radius:10px;padding:8px 10px;outline:none}
+
+<style id="theme-tokens">
+:root{
+  --bg:#0b1740; --surface:#0f204b; --surface-2:#172a59; --text:#f3f6ff; --muted:#b5c0da;
+  --border:#2a4277; --chip-bg:#142a5a; --chip-border:#2d4c8a; --accent:#74a7ff; --row-alt:rgba(255,255,255,.03);
+}
+:root[data-theme="navy"]{}
+:root[data-theme="white"]{ --bg:#f6f7fb; --surface:#ffffff; --surface-2:#f2f4fb; --text:#0f172a; --muted:#475569; --border:#e2e8f0; --chip-bg:#f1f5f9; --chip-border:#cbd5e1; --accent:#3b82f6; --row-alt:#f8fafc; }
+:root[data-theme="red"]{ --bg:#2a0b0b; --surface:#3a1010; --surface-2:#4a1515; --text:#ffecec; --muted:#f5b7b7; --border:#7e2a2a; --chip-bg:#4d1818; --chip-border:#a23c3c; --accent:#ff6b6b; --row-alt:rgba(255,255,255,.05); }
+:root[data-theme="green"]{ --bg:#06241e; --surface:#0a2f28; --surface-2:#0f4238; --text:#e9fff7; --muted:#9adac9; --border:#0e5a49; --chip-bg:#0b3a31; --chip-border:#126a57; --accent:#34d399; --row-alt:rgba(255,255,255,.04); }
+:root[data-theme="purple"]{ --bg:#1a0f2e; --surface:#23123f; --surface-2:#2c1650; --text:#f3eafe; --muted:#ccb9ff; --border:#3e2a7b; --chip-bg:#2e1a57; --chip-border:#5633b8; --accent:#a78bfa; --row-alt:rgba(255,255,255,.05); }
+:root[data-theme="teal"]{ --bg:#08232a; --surface:#0b2d36; --surface-2:#0f3b45; --text:#e9fbff; --muted:#a6dae5; --border:#165766; --chip-bg:#0c3440; --chip-border:#1d6b7c; --accent:#2dd4bf; --row-alt:rgba(255,255,255,.04); }
+:root[data-theme="orange"]{ --bg:#1f1206; --surface:#331a08; --surface-2:#44210b; --text:#fff5e9; --muted:#ffd7b0; --border:#5a2f11; --chip-bg:#4a260c; --chip-border:#7a3c15; --accent:#ff9f43; --row-alt:rgba(255,255,255,.04); }
+:root[data-theme="pink"]{ --bg:#2a0f1f; --surface:#3a152a; --surface-2:#4a1a35; --text:#ffe9f4; --muted:#ffc0dd; --border:#7e2c55; --chip-bg:#4d1d39; --chip-border:#a23a6e; --accent:#ff74b4; --row-alt:rgba(255,255,255,.05); }
+:root[data-theme="indigo"]{ --bg:#0d1230; --surface:#121a40; --surface-2:#182154; --text:#e8ecff; --muted:#c2cbff; --border:#2d3f8f; --chip-bg:#1a245d; --chip-border:#3c57c2; --accent:#8ea2ff; --row-alt:rgba(255,255,255,.04); }
+:root[data-theme="slate"]{ --bg:#0f172a; --surface:#111827; --surface-2:#1f2937; --text:#e5e7eb; --muted:#94a3b8; --border:#2b3444; --chip-bg:#1e293b; --chip-border:#334155; --accent:#60a5fa; --row-alt:rgba(255,255,255,.03); }
+:root[data-theme="gold"]{ --bg:#241b05; --surface:#2e2207; --surface-2:#3a2b0a; --text:#fff8dc; --muted:#ffe3a3; --border:#6b5316; --chip-bg:#48340b; --chip-border:#8c6b1b; --accent:#facc15; --row-alt:rgba(255,255,255,.04); }
+
+html, body{ background:var(--bg) !important; color:var(--text) !important; }
+#app, .app, .screen, .content, .panel, .card, .modal, .table-wrap, .table, .thead,
+.tr, .td, .th, .toolbar, .nav, .settings, #settings, .settings .card, .settings .section, .theme-picker{
+  background-color:var(--surface) !important; color:var(--text) !important; border-color:var(--border) !important;
+}
+.thead, .table .thead, .header{ background:var(--surface-2) !important; }
+.striped .tr:nth-child(2n), .table .tr:nth-child(even), .row-alt{ background-color:var(--row-alt) !important; }
+input, select, textarea, .select, .goal-input, .chip, .pill, .btn, .level-chip, .num-chip, .text-input{
+  background:var(--chip-bg) !important; color:var(--text) !important; border-color:var(--chip-border) !important;
+}
+.muted, .muted-note{ color:var(--muted) !important; }
+a, .link, .btn.link{ color:var(--accent) !important; }
+</style>
+
+<style id="theme-hotfix-toolbar-modals-settings">
+/* Table toolbar strip (search / names / edit) */
+.table-toolbar,
+.custom-toolbar,
+#customToolbar,
+.table-controls{
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Inputs inside that toolbar */
+#customSearch,
+.table-toolbar input,
+.table-toolbar select,
+#nameFormatCustom{
+  background: var(--chip-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--chip-border) !important;
+}
+
+/* Manage Tabs + New Custom Tab dialogs (shell & body) */
+.modal,
+.modal .modal-content,
+.dialog,
+.dialog .dialog-body,
+.builder-modal,
+.builder-modal .body{
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Dialog / sheet headers */
+.modal .modal-header,
+.dialog .dialog-header,
+.builder-modal .header{
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Settings wrapper panels (the big rounded card & inner sections) */
+#settings,
+.settings,
+.settings .card,
+.settings .section{
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Theme picker surface inside settings (the row that stayed navy) */
+.theme-picker{
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+</style>
+
+
+<style id="theme-hotfix-navButtons-studentCard">
+/* Student list container cards follow theme */
+.card{
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* App-nav buttons: + Add Tab, Manage Tabs, + Add Class */
+.appnav .add-tab,
+.appnav .manage-tabs,
+.add-class{
+  background: var(--chip-bg) !important;
+  border: 1px solid var(--chip-border) !important;
+  color: var(--text) !important;
+}
+.appnav .add-tab:hover,
+.appnav .manage-tabs:hover,
+.add-class:hover{ filter: brightness(1.06); }
 </style>
 
 </head>
@@ -3778,6 +3882,32 @@ const cell = slot[col.id];
       emitAt(x, y, style, Math.max(10, Math.round((cfg.count||40)*1.2)));
     }
   };
+})();
+</script>
+
+
+<script id="theme-apply-tokens">
+(function(){
+  function norm(t){ return (t||'navy').toString().trim().toLowerCase(); }
+  function apply(){
+    var t = (window.state && state.theme) ? norm(state.theme) : 'navy';
+    document.documentElement.setAttribute('data-theme', t);
+  }
+  try{ apply(); }catch(e){}
+  requestAnimationFrame(apply);
+  document.addEventListener('click', function(ev){
+    var el = ev.target.closest('[data-theme]');
+    if(el){
+      var name = el.getAttribute('data-theme');
+      if(window.state){ state.theme = name; try{ if(typeof save==='function') save(); }catch(e){} }
+      apply();
+    }
+  }, true);
+  if (typeof window.save === 'function'){
+    var _s = window.save;
+    window.save = function(){ var r=_s.apply(this, arguments); try{apply();}catch(e){} return r; };
+  }
+  window.applyThemeTokens = apply;
 })();
 </script>
 
