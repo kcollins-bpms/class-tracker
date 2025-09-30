@@ -564,6 +564,25 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .add-class:hover{ filter: brightness(1.06); }
 </style>
 
+<style id="fx-input-rounding-v2">
+/* Round only the controls inside Settings (Checkbox FX section included) */
+#settings select,
+#settings input[type="number"],
+#settings input[type="text"]{
+  border-radius: 12px !important;
+  padding: 6px 10px !important;
+  line-height: 1.3 !important;
+}
+
+/* Focus ring that matches your theme chrome */
+#settings select:focus,
+#settings input[type="number"]:focus,
+#settings input[type="text"]:focus{
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--chip-border) !important;
+}
+</style>
+
 </head>
 <body data-theme="navy">
   <div class="wrap">
