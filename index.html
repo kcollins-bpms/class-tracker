@@ -345,7 +345,7 @@
   .text-cell .text-input:focus{ box-shadow: inset 0 0 0 1px var(--accent) !important; }
 
 
-.level-chip.lvl-empty{background:var(--chip);color:var(--text);border:1px solid var(--chip-border);}
+.level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border);}
 .counter-cell{display:inline-flex;gap:8px;align-items:center}
 .btnx{padding:4px 8px;border-radius:10px;border:1px solid var(--panel-border);background:var(--field-bg);color:var(--text);cursor:pointer}
 .num-chip{display:inline-block;padding:4px 10px;border-radius:12px;background:var(--chip);border:1px solid var(--chip-border);}
@@ -376,7 +376,7 @@
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
-.level-chip.lvl-empty{background:var(--chip);color:var(--text);border:1px solid var(--chip-border)}
+.level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 
 <style>
@@ -390,7 +390,7 @@
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
-.level-chip.lvl-empty{background:var(--chip);color:var(--text);border:1px solid var(--chip-border)}
+.level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 
 <style id="checkbox-square-css">
@@ -419,7 +419,7 @@ input, select, textarea {
   background: var(--chip) !important; color: var(--text) !important; border: 1px solid var(--chip-border) !important;
 }
 /* IMPORTANT: don't override specific colored chips; only empty/default chip uses theme */
-.level-chip.lvl-empty { background: var(--chip) !important; color: var(--text) !important; border: 1px solid var(--chip-border) !important; }
+.level-chip.lvl-empty { background: var(--chip-bg) !important; color: var(--text) !important; border: 1px solid var(--chip-border) !important; }
 </style>
 
 <style id="theme-propagation-solid">
@@ -435,7 +435,7 @@ input, select, textarea {
 input, select, textarea { background: var(--field-bg) !important; color: var(--text) !important; border-color: var(--panel-border) !important; }
 .btn, .button { background: var(--chip) !important; color: var(--text) !important; border: 1px solid var(--chip-border) !important; }
 /* IMPORTANT: don't override colored options; only the empty/default chip follows theme */
-.level-chip.lvl-empty { background: var(--chip) !important; color: var(--text) !important; border: 1px solid var(--chip-border) !important; }
+.level-chip.lvl-empty { background: var(--chip-bg) !important; color: var(--text) !important; border: 1px solid var(--chip-border) !important; }
 </style>
 
 <style id="fx-ui-css">
@@ -475,7 +475,7 @@ html, body{ background:var(--bg) !important; color:var(--text) !important; }
 }
 .thead, .table .thead, .header{ background:var(--surface-2) !important; }
 .striped .tr:nth-child(2n), .table .tr:nth-child(even), .row-alt{ background-color:var(--row-alt) !important; }
-input, select, textarea, .select, .goal-input, .chip, .pill, .btn, .level-chip, .num-chip, .text-input{
+input, select, textarea, .select, .goal-input, .chip, .pill, .btn, .text-input{
   background:var(--chip-bg) !important; color:var(--text) !important; border-color:var(--chip-border) !important;
 }
 .muted, .muted-note{ color:var(--muted) !important; }
@@ -581,6 +581,32 @@ a, .link, .btn.link{ color:var(--accent) !important; }
   outline: none !important;
   box-shadow: 0 0 0 2px var(--chip-border) !important;
 }
+</style>
+
+<style id="dropdown-chip-levels">
+.level-chip{ display:inline-block; padding:6px 12px; border-radius:12px; font-weight:600; border:1px solid transparent; }
+.level-chip.lvl-empty{ background:var(--chip-bg); color:var(--text); border-color:var(--chip-border); }
+
+.level-chip.lvl-green  { background:#16a34a; color:#fff; border-color:#0e7a36; }
+.level-chip.lvl-red    { background:#ef4444; color:#fff; border-color:#c03636; }
+.level-chip.lvl-yellow { background:#f59e0b; color:#1f2937; border-color:#b77708; }
+.level-chip.lvl-blue   { background:#3b82f6; color:#fff; border-color:#2b63bd; }
+.level-chip.lvl-purple { background:#8b5cf6; color:#fff; border-color:#6d46c4; }
+.level-chip.lvl-orange { background:#fb923c; color:#1f2937; border-color:#c2722f; }
+.level-chip.lvl-pink   { background:#ec4899; color:#fff; border-color:#b83778; }
+</style>
+
+
+<style id="chip-colors-strong">
+/* keep empty chip themed, but force colored chips to their palette */
+.level-chip.lvl-empty{ background: var(--chip-bg) !important; color: var(--text) !important; border-color: var(--chip-border) !important; }
+.level-chip.lvl-green  { background:#16a34a !important; color:#fff !important; border:1px solid #0e7a36 !important; }
+.level-chip.lvl-yellow { background:#f59e0b !important; color:#1f2937 !important; border:1px solid #b77708 !important; }
+.level-chip.lvl-red    { background:#ef4444 !important; color:#fff !important; border:1px solid #c03636 !important; }
+.level-chip.lvl-blue   { background:#3b82f6 !important; color:#fff !important; border:1px solid #2b63bd !important; }
+.level-chip.lvl-purple { background:#8b5cf6 !important; color:#fff !important; border:1px solid #6d46c4 !important; }
+.level-chip.lvl-orange { background:#fb923c !important; color:#1f2937 !important; border:1px solid #c2722f !important; }
+.level-chip.lvl-pink   { background:#ec4899 !important; color:#fff !important; border:1px solid #b83778 !important; }
 </style>
 
 </head>
@@ -1947,60 +1973,75 @@ function renderCustomTab(tabId){
         wrap.append(dec, val, inc); td.appendChild(wrap);
 
       }else if(col.type==="dropdown"){
-        // thematic chip dropdown (no native select); preserves per-cell color
-        const makeChip = (label, colorClass) => {
-          const el = document.createElement("span");
-          el.className = "level-chip " + (colorClass || "lvl-empty");
-          el.textContent = label || "—";
-          return el;
-        };
-        const chip = makeChip(cell.value || "—", cell.colorClass || "lvl-empty");
-        chip.style.cursor = "pointer";
-        chip.title = "Click to select";
+      // Themed chip dropdown renderer (reads col.options: [{label, colorClass}])
+      // Persisted cell shape: { value: string, colorClass: string }
+      let store = st && st.customData ? st.customData : (st ? (st.customData={}) : {});
+      if(!store[tab.id]) store[tab.id] = {};
+      const slot = store[tab.id];
+      if(!slot[col.id]) slot[col.id] = { value: "", colorClass: "" };
+      const cell = slot[col.id];
 
-        function openPalette(){
-          const p = document.createElement("div");
-          p.className = "palette";
-          p.innerHTML = "<h5>Select</h5>";
+      const options = Array.isArray(col.options)
+        ? col.options.map(o => (typeof o === "string" ? {label:o, colorClass:""} : {label:o.label||"", colorClass:o.colorClass||""}))
+        : [];
 
-          // none
-          const none = document.createElement("div"); none.className="opt";
-          none.appendChild(makeChip("—","lvl-empty"));
-          none.addEventListener("click", ()=> choose({label:"", colorClass:""}));
-          p.appendChild(none);
+      td.innerHTML = "";
 
-          // saved options
-          const options = Array.isArray(col.options) ? col.options : [];
-          options.forEach(opt=>{
-            const row = document.createElement("div");
-            row.className = "opt";
-            row.appendChild(makeChip(opt.label || "—", opt.colorClass || ""));
-            row.addEventListener("click", ()=> choose(opt));
-            p.appendChild(row);
-          });
+      // chip factory applies the lvl-* class so color shows
+      const makeChip = (label, colorClass) => {
+        const el = document.createElement("span");
+        el.className = "level-chip " + (colorClass || "lvl-empty");
+        el.textContent = label && label.trim() ? label : "—";
+        el.title = label || "Select";
+        return el;
+      };
 
-          document.body.appendChild(p);
-          const r = chip.getBoundingClientRect();
-          const ph = Math.min(260, p.getBoundingClientRect().height || 240);
-          let left = Math.max(8, Math.min(innerWidth - 260, r.left));
-          let top  = r.bottom + 8;
-          if (top + ph > innerHeight - 8) top = Math.max(8, r.top - ph - 8);
-          Object.assign(p.style, {position:"fixed", left:left+"px", top:top+"px", zIndex:"9999"});
-          requestAnimationFrame(()=> p.classList.add("open"));
-          function onDoc(ev){ if(!p.contains(ev.target) && ev.target!==chip) close(); }
-          function close(){ p.classList.remove("open"); setTimeout(()=>p.remove(),100); document.removeEventListener("mousedown", onDoc); }
-          function choose(opt){
-            cell.value = opt.label || "";
-            cell.colorClass = opt.colorClass || "";
-            chip.className = "level-chip " + (cell.colorClass || "lvl-empty");
-            chip.textContent = cell.value || "—";
-            try{ if(typeof save==="function") save(); }catch(e){}
-            close();
-          }
-          document.addEventListener("mousedown", onDoc);
+      const chip = makeChip(cell.value, cell.colorClass);
+      chip.style.cursor = "pointer";
+
+      function openPalette(){
+        const p = document.createElement("div");
+        p.className = "palette";
+        // "None" option
+        const none = document.createElement("div");
+        none.className = "opt";
+        none.appendChild(makeChip("—","lvl-empty"));
+        none.addEventListener("click", ()=> choose({label:"", colorClass:""}));
+        p.appendChild(none);
+        // user options
+        options.forEach(opt=>{
+          const row = document.createElement("div");
+          row.className = "opt";
+          row.appendChild(makeChip(opt.label, opt.colorClass));
+          row.addEventListener("click", ()=> choose(opt));
+          p.appendChild(row);
+        });
+
+        document.body.appendChild(p);
+        const r = chip.getBoundingClientRect();
+        const ph = Math.min(280, p.getBoundingClientRect().height || 240);
+        let left = Math.max(8, Math.min(innerWidth - 260, r.left));
+        let top  = r.bottom + 8;
+        if (top + ph > innerHeight - 8) top = Math.max(8, r.top - ph - 8);
+        Object.assign(p.style, {position:"fixed", left:left+"px", top:top+"px", zIndex:"9999"});
+        requestAnimationFrame(()=> p.classList.add("open"));
+
+        function onDoc(ev){ if(!p.contains(ev.target) && ev.target!==chip) close(); }
+        function close(){ p.classList.remove("open"); setTimeout(()=>p.remove(),100); document.removeEventListener("mousedown", onDoc); }
+        function choose(opt){
+          cell.value = opt.label || "";
+          cell.colorClass = opt.colorClass || "";
+          chip.className = "level-chip " + (cell.colorClass || "lvl-empty");
+          chip.textContent = cell.value || "—";
+          try{ save(); }catch(e){}
+          close();
         }
-        chip.addEventListener("click", openPalette);
-        td.appendChild(chip);
+        document.addEventListener("mousedown", onDoc);
+      }
+
+      chip.addEventListener("click", openPalette);
+      td.appendChild(chip);
+
 
       }else{
         // text
@@ -2898,7 +2939,7 @@ renderAll();
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
-.level-chip.lvl-empty{background:var(--chip);color:var(--text);border:1px solid var(--chip-border)}
+.level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 <script>
 (function(){
