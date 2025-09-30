@@ -449,6 +449,17 @@ input, select, textarea { background: var(--field-bg) !important; color: var(--t
 .fx-btn{background:var(--chip,#142a5a);color:var(--text,#f6f7fb);border:1px solid var(--chip-border,#35518e);border-radius:8px;padding:6px 10px;cursor:pointer}
 </style>
 
+
+<style id="fx-ui-css-compact">
+/* Compact Checkbox FX row */
+.fx-grid{display:grid;grid-template-columns:1.2fr .6fr .6fr;gap:12px}
+@media (max-width: 860px){ .fx-grid{grid-template-columns:1fr} }
+.fx-field label{display:block;font-size:13px;opacity:.9;margin:0 0 6px}
+.fx-field .control{width:100%;max-width:100%}
+.fx-field select.control,
+.fx-field input.control{background:var(--field-bg,var(--chip,#142a5a));color:var(--text,#f6f7fb);border:1px solid var(--panel-border,#35518e);border-radius:10px;padding:8px 10px;outline:none}
+</style>
+
 </head>
 <body data-theme="navy">
   <div class="wrap">
@@ -3536,6 +3547,237 @@ const cell = slot[col.id];
   sel.addEventListener('change', persist);
   cnt.addEventListener('change', persist);
   grv.addEventListener('change', persist);
+})();
+</script>
+
+
+<script id="fx-settings-script">
+(function(){
+  window.state = window.state || {};
+  if(!state.checkboxFx){ state.checkboxFx = { style:"confetti", count:40, gravity:900 }; }
+
+  // Remove floating controls if present
+  try{ document.getElementById("fxToggle")?.remove(); document.getElementById("fxPanel")?.remove(); }catch(_){}
+
+  function ensureFxSettingsUI(){
+    const settingsCard = document.querySelector("#settings");
+    if(!settingsCard || settingsCard.querySelector("#fxSettings")) return;
+
+    const divider = document.createElement("div");
+    divider.className = "divider";
+    settingsCard.appendChild(divider);
+
+    const header = document.createElement("div");
+    header.className = "muted";
+    header.style.margin = "4px 0 8px";
+    header.textContent = "Checkbox FX";
+    settingsCard.appendChild(header);
+
+    const sec = document.createElement("div");
+    sec.id = "fxSettings";
+    sec.innerHTML = `
+<div class="fx-grid">
+  <div class="fx-field">
+    <label>Style</label>
+    <select id="fxStyle" class="control">
+      <option value="none">None</option>
+      <option value="confetti">Confetti</option>
+      <option value="hearts">Hearts</option>
+      <option value="stars">Stars</option>
+    </select>
+  </div>
+  <div class="fx-field">
+    <label>Particles</label>
+    <input id="fxCount" class="control" type="number" inputmode="numeric" placeholder="40" />
+  </div>
+  <div class="fx-field">
+    <label>Gravity</label>
+    <input id="fxGravity" class="control" type="number" inputmode="numeric" placeholder="900" />
+  </div>
+</div>
+<div class="muted-note" style="margin-top:6px">
+  Choose an animation style for checkbox bursts. Select <strong>None</strong> to disable animations.
+</div>
+`;
+    settingsCard.appendChild(sec);
+
+    // Init
+    const fxStyle   = sec.querySelector("#fxStyle");
+    const fxCount   = sec.querySelector("#fxCount");
+    const fxGravity = sec.querySelector("#fxGravity");
+    fxStyle.value        = state.checkboxFx.style   || "confetti";
+    fxCount.value        = state.checkboxFx.count   ?? 40;
+    fxGravity.value      = state.checkboxFx.gravity ?? 900;
+
+    function coerceInt(v, fallback){ const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.round(n)) : fallback; }
+    function persist(){
+      state.checkboxFx.style   = fxStyle.value;
+      state.checkboxFx.count   = coerceInt(fxCount.value, 40);
+      state.checkboxFx.gravity = coerceInt(fxGravity.value, 900);
+      try{ if(typeof save==="function") save(); }catch(e){}
+      if (window.setCheckboxFxConfigFromState) window.setCheckboxFxConfigFromState();
+    }
+    fxStyle.addEventListener("change", persist);
+    fxCount.addEventListener("change", persist);
+    fxGravity.addEventListener("change", persist);
+  }
+
+  window.setCheckboxFxConfigFromState = function(){
+    const cfg = state.checkboxFx || {style:"confetti",count:40,gravity:900};
+    window._fxConfig = window._fxConfig || {style:"confetti",count:40,gravity:900};
+    _fxConfig.style   = cfg.style;
+    _fxConfig.count   = cfg.count;
+    _fxConfig.gravity = cfg.gravity;
+  };
+
+  function tryInit(attempts){
+    ensureFxSettingsUI();
+    window.setCheckboxFxConfigFromState();
+    if (!document.querySelector("#fxSettings") && attempts>0) setTimeout(()=>tryInit(attempts-1), 250);
+  }
+  tryInit(12);
+})();
+</script>
+
+
+<script id="fx-dispatcher">
+(function(){
+  window._fxConfig = window._fxConfig || { style:"confetti", count:40, gravity:900 };
+  if (window.setCheckboxFxConfigFromState) window.setCheckboxFxConfigFromState();
+
+  window._burstCheckboxFxAt = function(x, y, checked){
+    const cfg = (window.state && state.checkboxFx) ? state.checkboxFx : window._fxConfig;
+    const count = Math.max(1, Math.round(cfg.count || 40));
+    const gravity = cfg.gravity || 900;
+    if (cfg.style === 'none') { return; }
+    const type = (cfg.style==="hearts" ? "heart" : (cfg.style==="stars" ? "star" : "confetti"));
+    if (typeof window._burstConfettiAt === "function"){
+      try { window._burstConfettiAt(x, y, checked ? 1 : 0.7, { count, gravity, type }); } catch(e){}
+    }
+  };
+})();
+</script>
+
+
+<script id="fx-engine-v2">
+(function(){
+  window._fxConfig = window._fxConfig || { style:"confetti", count:40, gravity:900 };
+
+  let cvs = document.getElementById("fxLayer");
+  if(!cvs){
+    cvs = document.createElement("canvas");
+    cvs.id = "fxLayer";
+    Object.assign(cvs.style, {position:"fixed", inset:"0", pointerEvents:"none", zIndex:"9999"});
+    document.body.appendChild(cvs);
+  }
+  const ctx = cvs.getContext("2d");
+  function resize(){ cvs.width = innerWidth; cvs.height = innerHeight; }
+  resize(); addEventListener("resize", resize, {passive:true});
+
+  const CONFETTI = ["#ff2d6f","#ffa53b","#ffe26f","#50e991","#40c4ff","#a55eea","#ff7eb6","#7df9ff"];
+  const HEARTS   = ["#ff4d88","#ff2f6a","#ff8fb3","#ff6f91"];
+  const STARS    = ["#fff7ae","#fff4d1","#ffe066","#ffd43b"];
+
+  const P = [];
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function add(x,y,vx,vy,life,shape){ P.push({x,y,vx,vy,life,ttl:life,rot:rand(0,Math.PI*2),spin:rand(-6,6),shape}); }
+  function drawStarPath(r){
+    ctx.moveTo(0,-r);
+    for(let i=1;i<10;i++){
+      const ang=i*Math.PI/5, rr=i%2===0?r:r*0.45;
+      ctx.lineTo(Math.sin(ang)*rr, -Math.cos(ang)*rr);
+    }
+    ctx.closePath();
+  }
+  function drawHeartPath(s){
+    const r=s;
+    ctx.moveTo(0, r*0.7);
+    ctx.bezierCurveTo(-r, r*0.15, -r, -r*0.6, 0, -r*0.15);
+    ctx.bezierCurveTo( r,-r*0.6,  r,  r*0.15, 0,  r*0.7);
+    ctx.closePath();
+  }
+  function step(dt, g){
+    for(let i=P.length-1;i>=0;i--){
+      const p=P[i];
+      p.life-=dt;
+      if(p.life<=0){ P.splice(i,1); continue; }
+      p.vy += g*(dt/1000);
+      p.x  += p.vx*(dt/1000);
+      p.y  += p.vy*(dt/1000);
+      p.rot+= p.spin*(dt/1000);
+    }
+  }
+  function render(){
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    for(let i=0;i<P.length;i++){
+      const p=P[i], s=p.shape, t=1-p.life/p.ttl, a=Math.max(0,1-t);
+      ctx.save();
+      ctx.globalAlpha=a;
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.rot);
+      if(s.glow){ ctx.shadowColor=s.glow; ctx.shadowBlur=s.blur||10; } else { ctx.shadowBlur=0; }
+      ctx.fillStyle=s.fill||"#fff";
+      if(s.kind==="rect"){ ctx.fillRect(-s.w/2,-s.h/2,s.w,s.h); }
+      else if(s.kind==="circle"){ ctx.beginPath(); ctx.arc(0,0,s.r,0,Math.PI*2); ctx.fill(); }
+      else if(s.kind==="tri"){ ctx.beginPath(); ctx.moveTo(0,-s.r); ctx.lineTo(-s.r*0.8,s.r*0.8); ctx.lineTo(s.r*0.8,s.r*0.8); ctx.closePath(); ctx.fill(); }
+      else if(s.kind==="star"){ ctx.beginPath(); drawStarPath(s.r); ctx.fill(); }
+      else if(s.kind==="heart"){ ctx.beginPath(); drawHeartPath(s.r); ctx.fill(); }
+      ctx.restore();
+    }
+  }
+  let last=performance.now();
+  function loop(now){
+    const dt=now-last; last=now;
+    const g = (window.state && state.checkboxFx && state.checkboxFx.gravity != null ? state.checkboxFx.gravity : (window._fxConfig.gravity ?? 900));
+    step(dt, Number(g));
+    render();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  function emitAt(x,y, style, count){
+    const n = Math.max(1, Math.round(count||40));
+    const base = 330, life = 1000;
+    for(let i=0;i<n;i++){
+      const ang=rand(-Math.PI,Math.PI), sp=base*rand(0.65,1.35);
+      const vx=Math.cos(ang)*sp, vy=Math.sin(ang)*sp - rand(100,280);
+      let col, shape;
+      if(style==="hearts"){
+        col = HEARTS[(Math.random()*HEARTS.length)|0];
+        shape = {kind:"heart", r:rand(8,16), fill:col, glow:"#ff2b6a", blur:8};
+      }else if(style==="stars"){
+        col = STARS[(Math.random()*STARS.length)|0];
+        shape = {kind:"star", r:rand(9,18), fill:col, glow:"#ffd166", blur:12};
+      }else{ // confetti
+        col = CONFETTI[(Math.random()*CONFETTI.length)|0];
+        const k=Math.random(), sz=rand(8,22), glow=col;
+        shape = (k<0.33) ? {kind:"rect", w:sz*0.7, h:sz,  fill:col, glow, blur:10}
+              : (k<0.66) ? {kind:"circle", r:sz*0.45,     fill:col, glow, blur:10}
+                         : {kind:"tri",    r:sz*0.55,     fill:col, glow, blur:10};
+      }
+      add(x,y,vx,vy,life,shape);
+    }
+  }
+
+  // Override public APIs so everything uses selected style
+  window._burstConfettiAt = function(x, y, intensity=1, opts={}){
+    const cfg = (window.state && state.checkboxFx) ? state.checkboxFx : window._fxConfig;
+    const resolved = (opts.type ? (opts.type==="heart" ? "hearts" : (opts.type==="star" ? "stars" : "confetti")) : (cfg.style||"confetti"));
+    const count = Math.max(1, Math.round((opts.count ?? cfg.count ?? 40) * (intensity||1)));
+    emitAt(x, y, resolved, count);
+  };
+
+  window._fullScreenConfetti = function(){
+    const cfg = (window.state && state.checkboxFx) ? state.checkboxFx : window._fxConfig;
+    const style = cfg.style || "confetti";
+    if (style === "none") return;
+    const bursts = 6;
+    for(let i=0;i<bursts;i++){
+      const x = rand(innerWidth*0.15, innerWidth*0.85);
+      const y = rand(innerHeight*0.15, innerHeight*0.4);
+      emitAt(x, y, style, Math.max(10, Math.round((cfg.count||40)*1.2)));
+    }
+  };
 })();
 </script>
 
