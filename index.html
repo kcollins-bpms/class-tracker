@@ -438,6 +438,17 @@ input, select, textarea { background: var(--field-bg) !important; color: var(--t
 .level-chip.lvl-empty { background: var(--chip) !important; color: var(--text) !important; border: 1px solid var(--chip-border) !important; }
 </style>
 
+<style id="fx-ui-css">
+.fx-toggle{position:fixed;right:14px;top:14px;z-index:11000;padding:8px 10px;border-radius:999px;border:1px solid var(--chip-border,#35518e);background:var(--chip,#142a5a);color:var(--text,#f6f7fb);cursor:pointer;font-weight:600}
+.fx-panel{position:fixed;right:14px;top:54px;z-index:11000;min-width:260px;background:var(--panel,#0f204b);color:var(--text,#f6f7fb);border:1px solid var(--chip-border,#35518e);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:12px;display:none}
+.fx-panel.open{display:block}
+.fx-row{display:flex;align-items:center;gap:8px;margin:8px 0}
+.fx-row label{flex:0 0 72px;font-size:13px;opacity:.85}
+.fx-panel select,.fx-panel input[type="number"]{flex:1;background:var(--chip,#142a5a);color:var(--text,#f6f7fb);border:1px solid var(--chip-border,#35518e);border-radius:8px;padding:6px 8px;outline:none}
+.fx-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.fx-btn{background:var(--chip,#142a5a);color:var(--text,#f6f7fb);border:1px solid var(--chip-border,#35518e);border-radius:8px;padding:6px 10px;cursor:pointer}
+</style>
+
 </head>
 <body data-theme="navy">
   <div class="wrap">
@@ -1781,7 +1792,7 @@ function renderCustomTab(tabId){
           try{ if(typeof save==="function") save(); }catch(e){}
           // burst + full column celebration
           const r = box.getBoundingClientRect();
-          if(window._burstConfettiAt) window._burstConfettiAt(r.left+r.width/2, r.top+r.height/2, cell.v?1:0.7);
+          if (window._burstCheckboxFxAt) window._burstCheckboxFxAt(r.left + r.width/2, r.top + r.height/2, cell.v);
           const colIndex = Array.from(tr.children).indexOf(td);
           const allChecked = Array.from(tbody.querySelectorAll("tr")).every(row=>{
             const cellEl = row.children[colIndex];
@@ -3302,5 +3313,231 @@ const cell = slot[col.id];
   setInterval(upgradeDropdownCells, 300); // very light, catches async renders
 })();
 </script>
+
+<script>
+/* ===== Checkbox FX engine (confetti | hearts | stars) ===== */
+(function(){
+  if (window._burstCheckboxFxAt) return; // already loaded
+
+  const cfg = window.checkboxFx = window.checkboxFx || {
+    style: "confetti",   // "confetti" | "hearts" | "stars"
+    count: 40,           // particle count
+    gravity: 900         // px/s^2
+  };
+
+  // canvas layer
+  const cvs = document.createElement("canvas");
+  cvs.id = "cbfx-layer";
+  cvs.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:9999;";
+  document.body.appendChild(cvs);
+  const ctx = cvs.getContext("2d");
+  function resize(){ cvs.width = innerWidth; cvs.height = innerHeight; }
+  resize(); addEventListener("resize", resize, {passive:true});
+
+  // util
+  const parts = [];
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function add(x,y,vx,vy,life,shape){
+    parts.push({x,y,vx,vy,life,ttl:life,shape,rot:rand(0,Math.PI*2),spin:rand(-6,6)});
+  }
+
+  // draw helpers
+  function drawStarPath(r){
+    ctx.moveTo(0,-r);
+    for(let i=1;i<10;i++){
+      const ang = i*Math.PI/5;
+      const rr = i%2===0 ? r : r*0.45;
+      ctx.lineTo(Math.sin(ang)*rr, -Math.cos(ang)*rr);
+    }
+    ctx.closePath();
+  }
+  function drawHeartPath(s){
+    const r = s;
+    ctx.moveTo(0, r*0.7);
+    ctx.bezierCurveTo(-r, r*0.15, -r, -r*0.6, 0, -r*0.15);
+    ctx.bezierCurveTo(r, -r*0.6,  r,  r*0.15, 0,  r*0.7);
+    ctx.closePath();
+  }
+
+  // palettes
+  const confettiBright = ["#ff2d6f","#ffa53b","#ffe26f","#50e991","#40c4ff","#a55eea","#ff7eb6","#7df9ff"];
+  const heartColors    = ["#ff4d88","#ff2f6a","#ff8fb3","#ff6f91"];
+  const starColors     = ["#fff7ae","#fff4d1","#ffe066","#ffd43b"];
+
+  // frame loop
+  let last = performance.now();
+  function loop(now){
+    const dt = now - last; last = now;
+    step(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+  function step(dt){
+    const g = Number(cfg.gravity||900);
+    for (let i=parts.length-1;i>=0;i--){
+      const p = parts[i];
+      p.life -= dt;
+      if (p.life<=0){ parts.splice(i,1); continue; }
+      p.vy += g * (dt/1000);
+      p.x  += p.vx * (dt/1000);
+      p.y  += p.vy * (dt/1000);
+      p.rot += p.spin * (dt/1000);
+    }
+  }
+  function render(){
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    for (let i=0;i<parts.length;i++){
+      const p = parts[i], s = p.shape;
+      const t = 1 - p.life/p.ttl;
+      const alpha = Math.max(0, 1 - t);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+
+      // soft glow if provided
+      if (s.glow){ ctx.shadowColor = s.glow; ctx.shadowBlur = s.blur||10; } else { ctx.shadowBlur = 0; }
+
+      ctx.fillStyle = s.fill || "#fff";
+      if (s.kind==="rect"){
+        ctx.fillRect(-s.w/2, -s.h/2, s.w, s.h);
+      } else if (s.kind==="circle"){
+        ctx.beginPath(); ctx.arc(0,0,s.r,0,Math.PI*2); ctx.fill();
+      } else if (s.kind==="tri"){
+        ctx.beginPath(); ctx.moveTo(0,-s.r); ctx.lineTo(-s.r*0.8,s.r*0.8); ctx.lineTo(s.r*0.8,s.r*0.8); ctx.closePath(); ctx.fill();
+      } else if (s.kind==="star"){
+        ctx.beginPath(); drawStarPath(s.r); ctx.fill();
+      } else if (s.kind==="heart"){
+        ctx.beginPath(); drawHeartPath(s.r); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+  requestAnimationFrame(loop);
+
+  // emitter
+  function emit(x,y,style,count){
+    const n = Number(count||cfg.count||40);
+    const baseSpd = 330;
+    const life = 1000;
+    for (let i=0;i<n;i++){
+      const ang = rand(-Math.PI, Math.PI);
+      const spd = baseSpd * rand(0.65, 1.35);
+      const vx = Math.cos(ang)*spd;
+      const vy = Math.sin(ang)*spd - rand(100,280);
+      let shape;
+
+      if (style==="hearts"){
+        const col = heartColors[(Math.random()*heartColors.length)|0];
+        shape = {kind:"heart", r:rand(8,16), fill:col, glow:"#ff2b6a", blur:8};
+      } else if (style==="stars"){
+        const col = starColors[(Math.random()*starColors.length)|0];
+        shape = {kind:"star", r:rand(9,18), fill:col, glow:"#ffd166", blur:12};
+      } else { // confetti (brighter, varied, some glow)
+        const col = confettiBright[(Math.random()*confettiBright.length)|0];
+        const k = Math.random(), sz = rand(8,22), glow = col;
+        if (k<0.33) shape = {kind:"rect", w:sz*0.7, h:sz,     fill:col, glow, blur:10};
+        else if (k<0.66) shape= {kind:"circle", r:sz*0.45,    fill:col, glow, blur:10};
+        else             shape= {kind:"tri",    r:sz*0.55,    fill:col, glow, blur:10};
+      }
+      add(x,y,vx,vy,life,shape);
+    }
+  }
+
+  // public API
+  window._burstCheckboxFxAt = function(x,y,checked){
+    // if you ever want different behavior on uncheck, read `checked` here
+    emit(x,y, cfg.style, cfg.count);
+  };
+})();
+</script>
+
+<!-- Checkbox FX UI -->
+<button id="fxToggle" class="fx-toggle" title="Checkbox FX">✨ FX</button>
+<div id="fxPanel" class="fx-panel" role="dialog" aria-label="Checkbox FX">
+  <div class="fx-row">
+    <label for="fxStyle">Style</label>
+    <select id="fxStyle">
+      <option value="confetti">Confetti</option>
+      <option value="hearts">Hearts</option>
+      <option value="stars">Stars</option>
+    </select>
+  </div>
+  <div class="fx-row">
+    <label for="fxCount">Count</label>
+    <input id="fxCount" type="number" min="4" max="200" step="1" />
+  </div>
+  <div class="fx-row">
+    <label for="fxGrav">Gravity</label>
+    <input id="fxGrav" type="number" min="0" max="4000" step="50" />
+  </div>
+  <div class="fx-actions">
+    <button class="fx-btn" id="fxApply">Apply</button>
+    <button class="fx-btn" id="fxClose">Close</button>
+  </div>
+</div>
+
+<script id="fx-ui-script">
+(function(){
+  // Defaults
+  const defaults = { style:"confetti", count:40, gravity:900 };
+
+  // Existing engine config (created earlier) or bootstrap it
+  window.checkboxFx = window.checkboxFx || { ...defaults };
+  const cfg = window.checkboxFx;
+
+  // Try to hydrate from your app state (if present)
+  try{
+    if (window.state){
+      state.checkboxFx = state.checkboxFx || { ...defaults };
+      Object.assign(cfg, state.checkboxFx);
+    }
+  }catch(e){}
+
+  // Elements
+  const btn   = document.getElementById('fxToggle');
+  const panel = document.getElementById('fxPanel');
+  const sel   = document.getElementById('fxStyle');
+  const cnt   = document.getElementById('fxCount');
+  const grv   = document.getElementById('fxGrav');
+  const apply = document.getElementById('fxApply');
+  const close = document.getElementById('fxClose');
+
+  // Seed inputs
+  sel.value = (cfg.style||defaults.style);
+  cnt.value = (cfg.count||defaults.count);
+  grv.value = (cfg.gravity||defaults.gravity);
+
+  // Open/close
+  btn.addEventListener('click', ()=> panel.classList.toggle('open'));
+  close.addEventListener('click', ()=> panel.classList.remove('open'));
+  document.addEventListener('mousedown', (ev)=>{
+    if (!panel.contains(ev.target) && ev.target!==btn) panel.classList.remove('open');
+  });
+
+  function persist(){
+    cfg.style   = sel.value;
+    cfg.count   = Math.max(4, Math.min(200, Number(cnt.value)||defaults.count));
+    cfg.gravity = Math.max(0, Math.min(4000, Number(grv.value)||defaults.gravity));
+
+    // Mirror back into your app state and save, if available
+    try{
+      if (window.state){
+        state.checkboxFx = { ...cfg };
+        if (typeof save === "function") save();
+      }
+    }catch(e){}
+  }
+
+  // Apply now
+  apply.addEventListener('click', ()=>{ persist(); panel.classList.remove('open'); });
+
+  // Also apply on immediate changes (optional, feels nice)
+  sel.addEventListener('change', persist);
+  cnt.addEventListener('change', persist);
+  grv.addEventListener('change', persist);
+})();
+</script>
+
 </body>
 </html>
