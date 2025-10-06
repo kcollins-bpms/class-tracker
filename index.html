@@ -55,7 +55,7 @@
     --bg:#ffffff; --bg-2:#ffffff; --bg-3:#ffffff; --text:#0b1b3a; --muted:#3b4a78;
     --accent:#3b82f6; --neutral:#d9e1ff; --ok:#166534; --bad:#b91c1c;
     --btn-bg:#ffffff; --btn-border:#cfd8ff; --chip-border:#d7e1ff;
-    --lvl-dark-green:#15803d; --lvl-green:#22c55e; --lvl-yellow:#f59e0b; --lvl-red:#ef4444; --lvl-dark-red:#7f1d1d; --lvl-empty:#e6ecff;
+    --lvl-dark-green:#15803d; --lvl-green:#22c55e; --lvl-yellow:#fde047; --lvl-red:#ef4444; --lvl-dark-red:#7f1d1d; --lvl-empty:#e6ecff;
     --panel-bg:#ffffff; --panel-border:#dfe4f7; --field-bg:#ffffff; --menu-bg:#ffffff; --menu-border:#dfe4f7;
     --bg-grad1:#ffffff; --bg-grad2:#ffffff; --bg-grad3:#ffffff;
   }
@@ -589,7 +589,11 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 
 .level-chip.lvl-green  { background:#16a34a; color:#fff; border-color:#0e7a36; }
 .level-chip.lvl-red    { background:#ef4444; color:#fff; border-color:#c03636; }
-.level-chip.lvl-yellow { background:#f59e0b; color:#1f2937; border-color:#b77708; }
+.level-chip.lvl-yellow{
+  background:#fde047;   /* bright, unmistakably yellow */
+  color:#1f2937;        /* dark text for readability */
+  border-color:#facc15; /* deeper yellow border */
+}
 .level-chip.lvl-blue   { background:#3b82f6; color:#fff; border-color:#2b63bd; }
 .level-chip.lvl-purple { background:#8b5cf6; color:#fff; border-color:#6d46c4; }
 .level-chip.lvl-orange { background:#fb923c; color:#1f2937; border-color:#c2722f; }
@@ -601,7 +605,11 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 /* keep empty chip themed, but force colored chips to their palette */
 .level-chip.lvl-empty{ background: var(--chip-bg) !important; color: var(--text) !important; border-color: var(--chip-border) !important; }
 .level-chip.lvl-green  { background:#16a34a !important; color:#fff !important; border:1px solid #0e7a36 !important; }
-.level-chip.lvl-yellow { background:#f59e0b !important; color:#1f2937 !important; border:1px solid #b77708 !important; }
+.level-chip.lvl-yellow { 
+  background:#fde047 !important; 
+  color:#1f2937 !important; 
+  border:1px solid #facc15 !important; 
+}
 .level-chip.lvl-red    { background:#ef4444 !important; color:#fff !important; border:1px solid #c03636 !important; }
 .level-chip.lvl-blue   { background:#3b82f6 !important; color:#fff !important; border:1px solid #2b63bd !important; }
 .level-chip.lvl-purple { background:#8b5cf6 !important; color:#fff !important; border:1px solid #6d46c4 !important; }
