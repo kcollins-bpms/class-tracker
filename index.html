@@ -730,6 +730,18 @@ a, .link, .btn.link{ color:var(--accent) !important; }
       <div style="margin-bottom:8px;" class="muted">Theme</div>
       <div class="theme-grid" id="themeGrid"></div>
       <p class="muted" style="margin-top:10px">Click a chip to switch themes. Navy is the default.</p>
+
+      <div class="divider" style="margin:16px 0;"></div>
+
+      <div style="margin-bottom:8px;" class="muted">Data (stored locally in your browser)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="btnExportLocalData" class="btn" title="Download a backup of your data to a .json file">Export (Download JSON)</button>
+        <button id="btnImportLocalData" class="btn" title="Restore from a previously downloaded .json file">Import (Choose File)</button>
+      </div>
+      <p class="muted" style="margin-top:10px">
+        This app saves everything in your browser only. Export creates a backup file you can keep or move to another browser.
+        Import restores from that file. No accounts or Google Sheets required.
+      </p>
     </section>
   </div>
 
@@ -4033,6 +4045,73 @@ document.addEventListener("DOMContentLoaded", function(){
     });
   }
 });
+</script>
+<script>
+(function () {
+  // Small namespace to avoid collisions
+  const DataTools = {
+    exportAll(prefix = "") {
+      try {
+        const out = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!prefix || (prefix && k && k.startsWith(prefix))) {
+            out[k] = localStorage.getItem(k);
+          }
+        }
+        const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+        a.download = 'class-app-data-' + stamp + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        alert('Export complete. A JSON file has been downloaded.');
+      } catch (err) {
+        console.error('Export failed:', err);
+        alert('Export failed. See console for details.');
+      }
+    },
+    importAll() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(String(reader.result || '{}'));
+            const keys = Object.keys(data || {});
+            keys.forEach(k => localStorage.setItem(k, data[k]));
+            alert('Import complete. ' + keys.length + ' item(s) restored.');
+            // If your app has a reload hook, call it here:
+            // if (window.app && typeof window.app.reload === 'function') window.app.reload();
+            // Or do a light refresh:
+            // location.reload();
+          } catch (err) {
+            console.error('Import failed:', err);
+            alert('Import failed. Make sure you selected the JSON you downloaded earlier.');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+  };
+
+  // Wire up buttons after DOM is ready
+  window.addEventListener('DOMContentLoaded', function(){
+    const exportBtn = document.getElementById('btnExportLocalData');
+    const importBtn = document.getElementById('btnImportLocalData');
+    if (exportBtn) exportBtn.addEventListener('click', () => DataTools.exportAll());
+    if (importBtn) importBtn.addEventListener('click', () => DataTools.importAll());
+  });
+})();
 </script>
 
 </body>
