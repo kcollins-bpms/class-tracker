@@ -376,6 +376,23 @@
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
+.level-chip.lvl-black { 
+  background:#111; 
+  color:#fff; 
+  border-color:#2b2b2b; 
+}
+
+.level-chip.lvl-brown { 
+  background:#6d4c41; 
+  color:#fff; 
+  border-color:#5a3f36; 
+}
+
+.level-chip.lvl-silver { 
+  background:#c0c0c0; 
+  color:#041222; 
+  border-color:#a8a8a8; 
+}
 .level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 
@@ -390,6 +407,23 @@
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
+.level-chip.lvl-black { 
+  background:#111; 
+  color:#fff; 
+  border-color:#2b2b2b; 
+}
+
+.level-chip.lvl-brown { 
+  background:#6d4c41; 
+  color:#fff; 
+  border-color:#5a3f36; 
+}
+
+.level-chip.lvl-silver { 
+  background:#c0c0c0; 
+  color:#041222; 
+  border-color:#a8a8a8; 
+}
 .level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 
@@ -598,6 +632,23 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .level-chip.lvl-purple { background:#8b5cf6; color:#fff; border-color:#6d46c4; }
 .level-chip.lvl-orange { background:#fb923c; color:#1f2937; border-color:#c2722f; }
 .level-chip.lvl-pink   { background:#ec4899; color:#fff; border-color:#b83778; }
+.level-chip.lvl-black { 
+  background:#111; 
+  color:#fff; 
+  border-color:#2b2b2b; 
+}
+
+.level-chip.lvl-brown { 
+  background:#6d4c41; 
+  color:#fff; 
+  border-color:#5a3f36; 
+}
+
+.level-chip.lvl-silver { 
+  background:#c0c0c0; 
+  color:#041222; 
+  border-color:#a8a8a8; 
+}
 </style>
 
 
@@ -615,6 +666,23 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .level-chip.lvl-purple { background:#8b5cf6 !important; color:#fff !important; border:1px solid #6d46c4 !important; }
 .level-chip.lvl-orange { background:#fb923c !important; color:#1f2937 !important; border:1px solid #c2722f !important; }
 .level-chip.lvl-pink   { background:#ec4899 !important; color:#fff !important; border:1px solid #b83778 !important; }
+.level-chip.lvl-black { 
+  background:#111; 
+  color:#fff; 
+  border-color:#2b2b2b; 
+}
+
+.level-chip.lvl-brown { 
+  background:#6d4c41; 
+  color:#fff; 
+  border-color:#5a3f36; 
+}
+
+.level-chip.lvl-silver { 
+  background:#c0c0c0; 
+  color:#041222; 
+  border-color:#a8a8a8; 
+}
 </style>
 
 </head>
@@ -2194,6 +2262,9 @@ function openTabBuilder(editTabId){
             {label:"Purple",colorClass:"lvl-purple"},
             {label:"Orange",colorClass:"lvl-orange"},
             {label:"Pink",  colorClass:"lvl-pink"},
+            {label:"Black", colorClass:"lvl-black"},
+            {label:"Brown", colorClass:"lvl-brown"},
+            {label:"Silver", colorClass:"lvl-silver"},
           ];
           choices.forEach(c=>{
             const row = document.createElement("div");
@@ -2968,6 +3039,23 @@ renderAll();
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
+.level-chip.lvl-black { 
+  background:#111; 
+  color:#fff; 
+  border-color:#2b2b2b; 
+}
+
+.level-chip.lvl-brown { 
+  background:#6d4c41; 
+  color:#fff; 
+  border-color:#5a3f36; 
+}
+
+.level-chip.lvl-silver { 
+  background:#c0c0c0; 
+  color:#041222; 
+  border-color:#a8a8a8; 
+}
 .level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 <script>
@@ -2981,15 +3069,19 @@ renderAll();
   function openPalette(anchor, onPick){
     const p=document.createElement("div"); p.className="palette"; p.innerHTML="<h5>Select color</h5>";
     const choices=[
-      {label:"None",  colorClass:""},
-      {label:"Green", colorClass:"lvl-green"},
-      {label:"Yellow",colorClass:"lvl-yellow"},
-      {label:"Red",   colorClass:"lvl-red"},
-      {label:"Blue",  colorClass:"lvl-blue"},
-      {label:"Purple",colorClass:"lvl-purple"},
-      {label:"Orange",colorClass:"lvl-orange"},
-      {label:"Pink",  colorClass:"lvl-pink"}
+    {label:"None",   colorClass:""},
+    {label:"Green",  colorClass:"lvl-green"},
+    {label:"Yellow", colorClass:"lvl-yellow"},
+    {label:"Red",    colorClass:"lvl-red"},
+    {label:"Blue",   colorClass:"lvl-blue"},
+    {label:"Purple", colorClass:"lvl-purple"},
+    {label:"Orange", colorClass:"lvl-orange"},
+    {label:"Pink",   colorClass:"lvl-pink"},
+    {label:"Black",  colorClass:"lvl-black"},
+    {label:"Brown",  colorClass:"lvl-brown"},
+    {label:"Silver", colorClass:"lvl-silver"},
     ];
+
     choices.forEach(opt=>{ const row=document.createElement("div"); row.className="opt"; row.appendChild(chip(opt.label, opt.colorClass||"lvl-empty")); row.addEventListener("click",()=>{ onPick(opt); close(); }); p.appendChild(row); });
     document.body.appendChild(p);
     const r=anchor.getBoundingClientRect(); const ph=Math.min(260,p.getBoundingClientRect().height||240);
