@@ -287,6 +287,11 @@
   .legend{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
   .legend .num-chip{ min-width:auto; padding:4px 8px }
 
+  /* Tab Builder: apply-to-classes */
+  .apply-classes{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px }
+  .apply-pill{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--panel-border); background:rgba(255,255,255,.04); cursor:pointer; user-select:none }
+  .apply-pill input{ width:16px; height:16px; cursor:pointer }
+
   /* apply panel/field tokens broadly */
   .compact-card,
   .tardy-row,
@@ -966,6 +971,12 @@ Weasley, Ron"></textarea>
         <input id="tbName" placeholder="e.g., Benchmarks" />
       </div>
 
+      <div id="tbApplyWrap" class="field">
+        <label>Apply to classes</label>
+        <div class="muted-note" style="margin-top:4px">Choose which classes get this tab. You can always edit tab names/columns separately inside each class.</div>
+        <div id="tbApplyClasses" class="apply-classes"></div>
+      </div>
+
       <div class="divider"></div>
       <h4 style="margin:8px 0">Columns</h4>
       <div class="muted-note">Add numeric or text columns. Drag to reorder. Numeric columns can show a color chip based on ranges.</div>
@@ -1053,12 +1064,34 @@ function ensureStudent(st){
   s.customData ??= {};
   return s;
 }
+function ensureCustomCol(col){
+  const c = col || {};
+  c.id ??= crypto.randomUUID();
+  c.type ??= "text";
+  c.name ??= "Column";
+  // keep any type-specific settings as-is (ranges/options/etc.)
+  return c;
+}
+function ensureCustomTab(tab){
+  const t = tab || {};
+  t.id ??= crypto.randomUUID();
+  t.name ??= "Custom Tab";
+  t.visible = (t.visible !== false);
+  t.columns = Array.isArray(t.columns) ? t.columns.map(ensureCustomCol) : [];
+  return t;
+}
 function ensureClass(c){
   c.id ??= crypto.randomUUID();
   c.name ??= "Period _";
   c.columns ??= {fall:true,winter:true,spring:true};
   c.students = Array.isArray(c.students) ? c.students.map(ensureStudent) : [];
+  // NEW: custom tabs are stored per-class so names/columns can differ by class
+  c.customTabs = Array.isArray(c.customTabs) ? c.customTabs.map(ensureCustomTab) : [];
   return c;
+}
+function deepClone(obj){
+  // plain-data clone (tabs are just JSON-safe objects)
+  return JSON.parse(JSON.stringify(obj));
 }
 function ensureState(state){
   const s = state || {};
@@ -1072,7 +1105,19 @@ function ensureState(state){
   s.search ??= "";
   s.theme ??= "navy";
   s.showRemove ??= false;
-  s.customTabs ??= [];
+
+  // Legacy migration: old versions stored customTabs at the root (state.customTabs).
+  // We copy them into EACH class (same IDs preserved so existing data still maps),
+  // then remove the legacy field.
+  if(Array.isArray(s.customTabs) && s.customTabs.length){
+    s.classes.forEach(cls=>{
+      if(!Array.isArray(cls.customTabs) || !cls.customTabs.length){
+        cls.customTabs = s.customTabs.map(t=> ensureCustomTab(deepClone(t)));
+      }
+    });
+    try{ delete s.customTabs; }catch(_){ s.customTabs = undefined; }
+  }
+
   s.tabsVisibility ??= { diagnostics:true, tardies:true };
   s.customSort ??= {};
   s._lastSavedAt ??= Date.now();
@@ -1135,6 +1180,12 @@ let state = load();
 const qs = (sel, el=document)=>el.querySelector(sel);
 const qsa = (sel, el=document)=>Array.from(el.querySelectorAll(sel));
 function getActiveClass(){ return state.classes.find(c=>c.id===state.activeClassId) || state.classes[0]; }
+function getActiveCustomTabs(){
+  const cls = getActiveClass();
+  cls.customTabs = Array.isArray(cls.customTabs) ? cls.customTabs : [];
+  return cls.customTabs;
+}
+window.getActiveCustomTabs = getActiveCustomTabs;
 function keepScroll(fn){ const y=scrollY, x=scrollX; fn(); scrollTo(x,y); }
 
 /* ===================== Name/Levels Helpers ===================== */
@@ -1278,8 +1329,9 @@ function renderAppNav(){
   appnav.innerHTML = "";
   if(state.tabsVisibility.diagnostics) appnav.appendChild(appTab("Diagnostics","diagnostics"));
   if(state.tabsVisibility.tardies) appnav.appendChild(appTab("Tardies","tardies"));
-  // custom tabs
-  state.customTabs.forEach(t=>{
+
+  // custom tabs (per-class)
+  getActiveCustomTabs().forEach(t=>{
     if(!t.visible) return;
     const key = "custom:"+t.id;
     appnav.appendChild(appTab(t.name, key));
@@ -1297,6 +1349,7 @@ function renderAppNav(){
 
   appnav.appendChild(appTab("Settings","settings"));
 }
+
 
 /* ===================== Screen Switch ===================== */
 function hideAllScreens(){
@@ -1318,8 +1371,14 @@ function applyScreen(){
   if(k==="diagnostics"){ qs("#diagnostics").style.display=""; renderDiagnostics(); updateActiveNav(); return; }
   if(k==="tardies"){ qs("#tardies").style.display=""; renderTardies(); updateActiveNav(); return; }
   if(k==="settings"){ qs("#settings").style.display=""; renderThemeChips(); updateActiveNav(); return; }
-  if(k.startsWith("custom:")){ renderCustomTab(k.split(":")[1]); updateActiveNav(); return; }
+  if(k.startsWith("custom:")){
+    const tabId = k.split(":")[1];
+    const tab = getActiveCustomTabs().find(t=>t.id===tabId);
+    if(!tab){ state.activeScreen="diagnostics"; save(); applyScreen(); return; }
+    renderCustomTab(tabId); updateActiveNav(); return;
+  }
 }
+
 
 /* ===================== Level Palette ===================== */
 let paletteEl = null;
@@ -1785,6 +1844,15 @@ function openManageTabs(){
   const list = qs("#manageTabsList");
   list.innerHTML = "";
 
+  const cls = getActiveClass();
+  const tabs = getActiveCustomTabs();
+
+  const hint = document.createElement("div");
+  hint.className = "muted-note";
+  hint.style.marginBottom = "8px";
+  hint.textContent = `Custom tabs for: ${cls.name || "Class"}`;
+  list.appendChild(hint);
+
   function row(label, visible, onToggle, deletable, onDelete){
     const r = document.createElement("div"); r.className="col-item";
     const dot = document.createElement("div"); dot.textContent="•"; dot.className="muted";
@@ -1803,10 +1871,14 @@ function openManageTabs(){
 
   list.appendChild(row("Diagnostics", state.tabsVisibility.diagnostics, ()=>{ state.tabsVisibility.diagnostics=!state.tabsVisibility.diagnostics; save(); renderAppNav(); }, false));
   list.appendChild(row("Tardies", state.tabsVisibility.tardies, ()=>{ state.tabsVisibility.tardies=!state.tabsVisibility.tardies; save(); renderAppNav(); }, false));
-  state.customTabs.forEach((t,i)=>{
+
+  tabs.forEach((t)=>{
     list.appendChild(row(t.name, t.visible, ()=>{ t.visible=!t.visible; save(); renderAppNav(); }, true, ()=>{
-      const idx = state.customTabs.findIndex(x=>x.id===t.id);
-      state.customTabs.splice(idx,1); save(); if(state.activeScreen===`custom:${t.id}`) state.activeScreen="diagnostics"; renderAppNav(); applyScreen();
+      const idx = cls.customTabs.findIndex(x=>x.id===t.id);
+      if(idx>=0) cls.customTabs.splice(idx,1);
+      save();
+      if(state.activeScreen===`custom:${t.id}`) state.activeScreen="diagnostics";
+      renderAppNav(); applyScreen();
     }));
   });
 
@@ -1875,7 +1947,7 @@ function colorForValue(cfg, val){
   return "lvl-empty";
 }
 function renderCustomTab(tabId){
-  const tab = state.customTabs.find(t=>t.id===tabId);
+  const tab = getActiveCustomTabs().find(t=>t.id===tabId);
   const pal = qs("#togglePalette");
   if (pal){
     const hasText = (tab?.columns||[]).some(c=>c.type==="text");
@@ -2209,10 +2281,35 @@ const tabBuilderModal = qs("#tabBuilderModal");
 function openTabBuilder(editTabId){
   const editing = !!editTabId;
   qs("#tbTitle").textContent = editing ? "Edit Custom Tab" : "New Custom Tab";
-  const existing = editing ? state.customTabs.find(t=>t.id===editTabId) : null;
+  const existing = editing ? getActiveCustomTabs().find(t=>t.id===editTabId) : null;
   qs("#tbName").value = existing?.name || "";
   const colsHost = qs("#tbCols"); colsHost.innerHTML = "";
   const existingCols = existing?.columns || [];
+
+  // Apply-to-classes UI (NEW tabs only). Tabs/columns can be edited per class later.
+  const applyWrap = qs("#tbApplyWrap");
+  const applyHost = qs("#tbApplyClasses");
+  if(applyWrap && applyHost){
+    if(editing){
+      applyWrap.style.display = "none";
+    } else {
+      applyWrap.style.display = "";
+      applyHost.innerHTML = "";
+      const activeId = getActiveClass().id;
+      (state.classes||[]).forEach(cls=>{
+        const lbl = document.createElement("label");
+        lbl.className = "apply-pill";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = cls.id;
+        cb.checked = (cls.id === activeId);
+        const sp = document.createElement("span");
+        sp.textContent = cls.name || "Class";
+        lbl.append(cb, sp);
+        applyHost.appendChild(lbl);
+      });
+    }
+  }
 
   // new simple rows
   function rowFor(type, init = {}){
@@ -2510,7 +2607,7 @@ function openTabBuilder(editTabId){
       }
     });
     if(editing){
-      const t = state.customTabs.find(t=>t.id===editTabId);
+      const t = getActiveCustomTabs().find(t=>t.id===editTabId);
       if(t){ t.name = name; t.columns = cols; }
       save();
       tabBuilderModal.classList.remove("open"); tabBuilderModal.setAttribute("aria-hidden","true");
@@ -2518,13 +2615,33 @@ function openTabBuilder(editTabId){
       // keep current activeScreen
       applyScreen();
     } else {
-      const tab = { id: crypto.randomUUID(), name, visible:true, columns:cols };
-      state.customTabs.push(tab);
+      const tabId = crypto.randomUUID();
+      const tab = { id: tabId, name, visible:true, columns:cols };
+
+      // Read class selections (defaults to current class).
+      let targetIds = [];
+      const wrap = qs("#tbApplyWrap");
+      if(wrap && wrap.style.display !== "none"){
+        qsa('#tbApplyClasses input[type="checkbox"]').forEach(cb=>{ if(cb.checked) targetIds.push(cb.value); });
+      }
+      const activeId = getActiveClass().id;
+      if(!targetIds.length) targetIds = [activeId];
+      if(!targetIds.includes(activeId)) targetIds.unshift(activeId);
+
+      targetIds.forEach(cid=>{
+        const cls = state.classes.find(c=>c.id===cid);
+        if(!cls) return;
+        cls.customTabs = Array.isArray(cls.customTabs) ? cls.customTabs : [];
+        if(cls.customTabs.some(t=>t.id===tabId)) return;
+        cls.customTabs.push(cid===activeId ? tab : deepClone(tab));
+      });
+
+      state.activeScreen = `custom:${tabId}`;
       save();
       tabBuilderModal.classList.remove("open"); tabBuilderModal.setAttribute("aria-hidden","true");
       renderAppNav();
-      state.activeScreen = "custom:"+tab.id; save(); applyScreen();
-    };
+      applyScreen();
+    }
   };
 
   tabBuilderModal.classList.add("open"); tabBuilderModal.setAttribute("aria-hidden","false");
@@ -2836,7 +2953,7 @@ renderAll();
       const key = window.state?.activeScreen || "";
       if(!key.startsWith("custom:")) return null;
       const id = key.split(":")[1];
-      return (window.state?.customTabs||[]).find(t=> t.id===id) || null;
+      return ((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))).find(t=> t.id===id) || null;
     }catch(_){ return null; }
   }
 
@@ -3134,7 +3251,7 @@ renderAll();
           const key = window.state?.activeScreen || "";
           if(key.startsWith("custom:")){
             const id = key.split(":")[1];
-            const tab = (window.state?.customTabs||[]).find(t=> t.id===id);
+            const tab = ((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))).find(t=> t.id===id);
             const name = row.querySelector(".nm")?.value?.trim() || "";
             const col = tab ? (tab.columns||[]).find(c=> (c.name||"")===name) : null;
             if(col && Array.isArray(col.options)) preset = col.options.slice();
@@ -3159,7 +3276,7 @@ renderAll();
       btn.addEventListener("click", ()=>{
         setTimeout(()=>{
           try{
-            const tabs=(window.state?.customTabs||[]); let tab=null;
+            const tabs=((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))); let tab=null;
             const key=window.state?.activeScreen||"";
             if(key.startsWith("custom:")){ const id=key.split(":")[1]; tab=tabs.find(t=>t.id===id)||null; }
             if(!tab && tabs.length) tab=tabs[tabs.length-1];
@@ -3211,7 +3328,7 @@ renderAll();
     const wrap = qs("#customTableWrap"); if(!wrap) return;
     const table = wrap.querySelector("table"); if(!table) return;
     const tbody = table.tBodies[0] || table.querySelector("tbody"); if(!tbody) return;
-    let tab=null; try{ const k=window.state?.activeScreen||""; if(k.startsWith("custom:")){ const id=k.split(":")[1]; tab=(window.state?.customTabs||[]).find(t=>t.id===id)||null; } }catch(e){}
+    let tab=null; try{ const k=window.state?.activeScreen||""; if(k.startsWith("custom:")){ const id=k.split(":")[1]; tab=((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))).find(t=>t.id===id)||null; } }catch(e){}
     if(!tab) return;
     (tab.columns||[]).forEach((col,i)=>{
       if((col.type||"").toLowerCase()!=="dropdown") return;
@@ -3351,7 +3468,7 @@ renderAll();
           const key = window.state?.activeScreen || "";
           if(key.startsWith("custom:")){
             const id = key.split(":")[1];
-            const tab = (window.state?.customTabs||[]).find(t=> t.id===id);
+            const tab = ((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))).find(t=> t.id===id);
             const name = row.querySelector(".nm")?.value?.trim() || "";
             const col = tab ? (tab.columns||[]).find(c=> (c.name||"")===name) : null;
             if(col && Array.isArray(col.options)) preset = col.options.slice();
@@ -3378,7 +3495,7 @@ renderAll();
 
   function persistOptions(){
     try{
-      const tabs=(window.state?.customTabs||[]); if(!tabs.length) return;
+      const tabs=((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))); if(!tabs.length) return;
       let tab=null;
       const key=window.state?.activeScreen||"";
       if(key.startsWith("custom:")){
@@ -3419,7 +3536,7 @@ renderAll();
       const key = window.state?.activeScreen || "";
       if(key.startsWith("custom:")){
         const id = key.split(":")[1];
-        tab = (window.state?.customTabs||[]).find(t=> t.id===id) || null;
+        tab = ((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))).find(t=> t.id===id) || null;
       }
     }catch(e){}
     if(!tab) return;
@@ -3554,7 +3671,7 @@ const cell = slot[col.id];
       const key = window.state?.activeScreen || "";
       if (key.startsWith("custom:")) {
         const id = key.split(":")[1];
-        tab = (window.state?.customTabs||[]).find(t=> t.id === id) || null;
+        tab = ((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (((window.getActiveCustomTabs && window.getActiveCustomTabs()) || (window.state?.customTabs||[])))).find(t=> t.id === id) || null;
       }
     } catch(e){}
     if(!tab) return;
@@ -3781,7 +3898,7 @@ const cell = slot[col.id];
     }
   }catch(e){}
 
-  // Elements
+  // Elements (floating FX panel UI; may not exist in this build)
   const btn   = document.getElementById('fxToggle');
   const panel = document.getElementById('fxPanel');
   const sel   = document.getElementById('fxStyle');
@@ -3790,31 +3907,33 @@ const cell = slot[col.id];
   const apply = document.getElementById('fxApply');
   const close = document.getElementById('fxClose');
 
-  // Seed inputs
-  sel.value = (cfg.style||defaults.style);
-  cnt.value = (cfg.count||defaults.count);
-  grv.value = (cfg.gravity||defaults.gravity);
-
-  // Open/close
-  btn.addEventListener('click', ()=> panel.classList.toggle('open'));
-  close.addEventListener('click', ()=> panel.classList.remove('open'));
-  document.addEventListener('mousedown', (ev)=>{
-    if (!panel.contains(ev.target) && ev.target!==btn) panel.classList.remove('open');
-  });
+  // If this build doesn't include the floating FX panel, quietly exit.
+  if(!btn || !panel || !sel || !cnt || !grv || !apply || !close) return;
 
   function persist(){
     cfg.style   = sel.value;
-    cfg.count   = Math.max(4, Math.min(200, Number(cnt.value)||defaults.count));
-    cfg.gravity = Math.max(0, Math.min(4000, Number(grv.value)||defaults.gravity));
+    cfg.count   = Number(cnt.value || defaults.count);
+    cfg.gravity = Number(grv.value || defaults.gravity);
 
-    // Mirror back into your app state and save, if available
     try{
-      if (window.state){
-        state.checkboxFx = { ...cfg };
-        if (typeof save === "function") save();
+      if(window.state){
+        state.checkboxFx = state.checkboxFx || {};
+        state.checkboxFx.style   = cfg.style;
+        state.checkboxFx.count   = cfg.count;
+        state.checkboxFx.gravity = cfg.gravity;
+        if(typeof saveState === "function") saveState();
       }
     }catch(e){}
   }
+
+  // Seed inputs
+  sel.value = (cfg.style || defaults.style);
+  cnt.value = String(cfg.count || defaults.count);
+  grv.value = String(cfg.gravity || defaults.gravity);
+
+  // Toggle panel
+  btn.addEventListener('click', ()=> panel.classList.toggle('open'));
+  close.addEventListener('click', ()=> panel.classList.remove('open'));
 
   // Apply now
   apply.addEventListener('click', ()=>{ persist(); panel.classList.remove('open'); });
@@ -3825,7 +3944,6 @@ const cell = slot[col.id];
   grv.addEventListener('change', persist);
 })();
 </script>
-
 
 <script id="fx-settings-script">
 (function(){
