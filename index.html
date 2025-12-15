@@ -162,6 +162,11 @@
   .lvl-dark-red{ background:var(--lvl-dark-red) !important; color:#ffe3e7; }
   .lvl-empty{ background:var(--lvl-empty) !important; color:#d6dcff; font-style:normal; }
 
+  /* Extra dropdown colors (ensure previews work everywhere, including tab builder) */
+  .lvl-black{ background:#111 !important; color:#fff !important; border-color:#2b2b2b !important; }
+  .lvl-brown{ background:#6d4c41 !important; color:#fff !important; border-color:#5a3f36 !important; }
+  .lvl-silver{ background:#c0c0c0 !important; color:#041222 !important; border-color:#a8a8a8 !important; }
+
   .delta{ min-width:74px; text-align:center; font-weight:800; border-radius:10px;
     padding:8px 10px; border:1px solid var(--panel-border); background:var(--field-bg); }
   .delta.up{ color:#7dff99; } .delta.down{ color:#ff9a9a; } .delta.zero{ color:#cbd6ff; }
@@ -367,6 +372,17 @@
 .tb-opt-row{display:flex;gap:10px;align-items:center}
 .tb-opt-row input{flex:1;padding:6px 10px;border-radius:10px;border:1px solid var(--panel-border);background:var(--field-bg);color:var(--text)}
 .tb-opt-row .chip{margin-left:4px}
+
+/* In the tab builder/editor, the option-color preview is a swatch (not a full pill). */
+.tb-opt-row .level-chip.chip{
+  display:inline-block;
+  width:22px; height:22px; min-width:22px;
+  padding:0;
+  border-radius:999px;
+  line-height:22px;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.22);
+}
+
 .tb-opt-row .pick,.tb-opt-row .remove,.tb-options .add{padding:6px 12px;border-radius:10px;border:1px solid var(--panel-border);background:var(--field-bg);color:var(--text);cursor:pointer}
 
 /* Themed color palette (scrolls if tall; never off-screen) */
@@ -381,23 +397,11 @@
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
-.level-chip.lvl-black { 
-  background:#111; 
-  color:#fff; 
-  border-color:#2b2b2b; 
-}
+.level-chip.lvl-black{ background:#111 !important; color:#fff !important; border:1px solid #2b2b2b !important; }
 
-.level-chip.lvl-brown { 
-  background:#6d4c41; 
-  color:#fff; 
-  border-color:#5a3f36; 
-}
+.level-chip.lvl-brown{ background:#6d4c41 !important; color:#fff !important; border:1px solid #5a3f36 !important; }
 
-.level-chip.lvl-silver { 
-  background:#c0c0c0; 
-  color:#041222; 
-  border-color:#a8a8a8; 
-}
+.level-chip.lvl-silver{ background:#c0c0c0 !important; color:#041222 !important; border:1px solid #a8a8a8 !important; }
 .level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 
@@ -412,23 +416,11 @@
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
-.level-chip.lvl-black { 
-  background:#111; 
-  color:#fff; 
-  border-color:#2b2b2b; 
-}
+.level-chip.lvl-black{ background:#111 !important; color:#fff !important; border:1px solid #2b2b2b !important; }
 
-.level-chip.lvl-brown { 
-  background:#6d4c41; 
-  color:#fff; 
-  border-color:#5a3f36; 
-}
+.level-chip.lvl-brown{ background:#6d4c41 !important; color:#fff !important; border:1px solid #5a3f36 !important; }
 
-.level-chip.lvl-silver { 
-  background:#c0c0c0; 
-  color:#041222; 
-  border-color:#a8a8a8; 
-}
+.level-chip.lvl-silver{ background:#c0c0c0 !important; color:#041222 !important; border:1px solid #a8a8a8 !important; }
 .level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 
@@ -637,23 +629,11 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .level-chip.lvl-purple { background:#8b5cf6; color:#fff; border-color:#6d46c4; }
 .level-chip.lvl-orange { background:#fb923c; color:#1f2937; border-color:#c2722f; }
 .level-chip.lvl-pink   { background:#ec4899; color:#fff; border-color:#b83778; }
-.level-chip.lvl-black { 
-  background:#111; 
-  color:#fff; 
-  border-color:#2b2b2b; 
-}
+.level-chip.lvl-black{ background:#111 !important; color:#fff !important; border:1px solid #2b2b2b !important; }
 
-.level-chip.lvl-brown { 
-  background:#6d4c41; 
-  color:#fff; 
-  border-color:#5a3f36; 
-}
+.level-chip.lvl-brown{ background:#6d4c41 !important; color:#fff !important; border:1px solid #5a3f36 !important; }
 
-.level-chip.lvl-silver { 
-  background:#c0c0c0; 
-  color:#041222; 
-  border-color:#a8a8a8; 
-}
+.level-chip.lvl-silver{ background:#c0c0c0 !important; color:#041222 !important; border:1px solid #a8a8a8 !important; }
 </style>
 
 
@@ -671,23 +651,11 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .level-chip.lvl-purple { background:#8b5cf6 !important; color:#fff !important; border:1px solid #6d46c4 !important; }
 .level-chip.lvl-orange { background:#fb923c !important; color:#1f2937 !important; border:1px solid #c2722f !important; }
 .level-chip.lvl-pink   { background:#ec4899 !important; color:#fff !important; border:1px solid #b83778 !important; }
-.level-chip.lvl-black { 
-  background:#111; 
-  color:#fff; 
-  border-color:#2b2b2b; 
-}
+.level-chip.lvl-black{ background:#111 !important; color:#fff !important; border:1px solid #2b2b2b !important; }
 
-.level-chip.lvl-brown { 
-  background:#6d4c41; 
-  color:#fff; 
-  border-color:#5a3f36; 
-}
+.level-chip.lvl-brown{ background:#6d4c41 !important; color:#fff !important; border:1px solid #5a3f36 !important; }
 
-.level-chip.lvl-silver { 
-  background:#c0c0c0; 
-  color:#041222; 
-  border-color:#a8a8a8; 
-}
+.level-chip.lvl-silver{ background:#c0c0c0 !important; color:#041222 !important; border:1px solid #a8a8a8 !important; }
 </style>
 
 </head>
@@ -2043,7 +2011,7 @@ function renderCustomTab(tabId){
 
     // name cell
     const tdName = document.createElement("td");
-    tdName.className = `td name-cell ${nameStateClass(st)}`;
+    tdName.className = "td name-cell name-default";
     const wrapName = document.createElement("div"); wrapName.className="name-wrap"; wrapName.textContent = fmtName(st);
     tdName.appendChild(wrapName); tr.appendChild(tdName);
 
@@ -2343,9 +2311,51 @@ function openTabBuilder(editTabId){
           <button type="button" class="pick">Pick color</button>
           <button type="button" class="remove">Remove</button>
         `;
-        // color picker (simple palette using existing theme classes)
+
         const pickBtn = wrap.querySelector(".pick");
         const chipEl  = wrap.querySelector(".chip");
+
+        // Robust preview paint: don't rely solely on CSS class rules (some themes/overrides can mask dark/neutral colors).
+        function paintChip(el){
+          const cls = Array.from(el.classList).find(c=>c.startsWith("lvl-")) || "";
+          const map = {
+            "lvl-green":  {bg:"#16a34a", fg:"#ffffff", bd:"#0e7a36"},
+            "lvl-yellow": {bg:"#fde047", fg:"#1f2937", bd:"#facc15"},
+            "lvl-red":    {bg:"#ef4444", fg:"#ffffff", bd:"#c03636"},
+            "lvl-blue":   {bg:"#3b82f6", fg:"#ffffff", bd:"#2b63bd"},
+            "lvl-purple": {bg:"#8b5cf6", fg:"#ffffff", bd:"#6d46c4"},
+            "lvl-orange": {bg:"#fb923c", fg:"#1f2937", bd:"#c2722f"},
+            "lvl-pink":   {bg:"#ec4899", fg:"#ffffff", bd:"#b83778"},
+            "lvl-black":  {bg:"#111111", fg:"#ffffff", bd:"#2b2b2b"},
+            "lvl-brown":  {bg:"#6d4c41", fg:"#ffffff", bd:"#5a3f36"},
+            "lvl-silver": {bg:"#c0c0c0", fg:"#041222", bd:"#a8a8a8"},
+          };
+
+          // "None" or "empty" uses themed chip styling; clear inline overrides.
+          if(!cls || cls==="lvl-empty"){
+            el.style.background = "";
+            el.style.color = "";
+            el.style.borderColor = "";
+            return;
+          }
+
+          const c = map[cls];
+          if(!c){
+            el.style.background = "";
+            el.style.color = "";
+            el.style.borderColor = "";
+            return;
+          }
+
+          el.style.background = c.bg;
+          el.style.color = c.fg;
+          el.style.borderColor = c.bd;
+        }
+
+        // Initial paint
+        paintChip(chipEl);
+
+        // color picker (simple palette using existing theme classes)
         pickBtn.addEventListener("click", ()=>{
           const p = document.createElement("div");
           p.className = "palette";
@@ -2363,17 +2373,32 @@ function openTabBuilder(editTabId){
             {label:"Brown", colorClass:"lvl-brown"},
             {label:"Silver", colorClass:"lvl-silver"},
           ];
+
+          function close(){
+            p.classList.remove("open");
+            setTimeout(()=>{ try{ p.remove(); }catch(e){} }, 120);
+            document.removeEventListener("mousedown", onDoc);
+          }
+          function onDoc(e){ if(!p.contains(e.target) && e.target!==pickBtn) close(); }
+
           choices.forEach(c=>{
             const row = document.createElement("div");
             row.className = "opt";
-            row.appendChild((()=>{ const el=document.createElement("span"); el.className="level-chip "+(c.colorClass||"lvl-empty"); el.textContent=c.label; return el; })());
+            const el = document.createElement("div");
+            el.className = "level-chip " + (c.colorClass || "lvl-empty");
+            el.textContent = c.label;
+            paintChip(el); // make sure Black/Brown/Silver preview reliably
+            row.appendChild(el);
+
             row.addEventListener("click", ()=>{
               chipEl.className = "level-chip " + (c.colorClass || "lvl-empty") + " chip";
+              paintChip(chipEl); // immediate visual feedback
               close();
               syncDataset();
             });
             p.appendChild(row);
           });
+
           document.body.appendChild(p);
           const r = pickBtn.getBoundingClientRect();
           const ph = Math.min(260, p.getBoundingClientRect().height || 240);
@@ -2384,12 +2409,15 @@ function openTabBuilder(editTabId){
           p.style.left = left + "px";
           p.style.top  = top  + "px";
           requestAnimationFrame(()=> p.classList.add("open"));
-          function onDoc(e){ if(!p.contains(e.target) && e.target!==pickBtn) close(); }
-          function close(){ p.classList.remove("open"); setTimeout(()=>p.remove(),100); document.removeEventListener("mousedown", onDoc); }
           document.addEventListener("mousedown", onDoc);
         });
+
+        // remove row
         wrap.querySelector(".remove").addEventListener("click", ()=>{ wrap.remove(); syncDataset(); });
-        wrap.querySelector("input").addEventListener("input", syncDataset);
+
+        // typing label should update dataset
+        wrap.querySelector("input").addEventListener("input", ()=> syncDataset());
+
         return wrap;
       }
 
@@ -3156,23 +3184,11 @@ renderAll();
 .level-chip.lvl-purple{background:#8e24aa;color:#fff;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-orange{background:#fb8c00;color:#222;border:1px solid rgba(0,0,0,.2)}
 .level-chip.lvl-pink{background:#ec407a;color:#fff;border:1px solid rgba(0,0,0,.2)}
-.level-chip.lvl-black { 
-  background:#111; 
-  color:#fff; 
-  border-color:#2b2b2b; 
-}
+.level-chip.lvl-black{ background:#111 !important; color:#fff !important; border:1px solid #2b2b2b !important; }
 
-.level-chip.lvl-brown { 
-  background:#6d4c41; 
-  color:#fff; 
-  border-color:#5a3f36; 
-}
+.level-chip.lvl-brown{ background:#6d4c41 !important; color:#fff !important; border:1px solid #5a3f36 !important; }
 
-.level-chip.lvl-silver { 
-  background:#c0c0c0; 
-  color:#041222; 
-  border-color:#a8a8a8; 
-}
+.level-chip.lvl-silver{ background:#c0c0c0 !important; color:#041222 !important; border:1px solid #a8a8a8 !important; }
 .level-chip.lvl-empty{background:var(--chip-bg);color:var(--text);border:1px solid var(--chip-border)}
 </style>
 <script>
