@@ -267,6 +267,27 @@
     max-height:90vh; overflow:auto;
   }
   .modal h3{ margin:0 0 10px }
+  .drop-list{ display:flex; flex-direction:column; gap:8px; }
+  .drop-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 10px; border:1px solid var(--menu-border); border-radius:14px;
+    background:rgba(255,255,255,.03);
+  }
+  .drop-left{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .drop-name{ font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:52vw; }
+  .drop-meta{ font-size:12px; }
+  .drop-actions{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .drop-detail-grid{ display:grid; gap:10px; }
+  .drop-block{
+    border:1px solid var(--menu-border); border-radius:14px; padding:10px; background:rgba(255,255,255,.02);
+  }
+  .drop-block-title{ font-weight:900; margin-bottom:6px; }
+  .drop-subblock{ margin-top:8px; padding-top:8px; border-top:1px solid var(--menu-border); }
+  .drop-subtitle{ font-weight:800; margin-bottom:6px; }
+  .drop-kv{ display:flex; justify-content:space-between; gap:10px; padding:3px 0; }
+  .drop-k{ color:var(--muted); }
+  .drop-v{ text-align:right; white-space:pre-wrap; }
+
   .tabs{ display:flex; gap:8px; margin-bottom:10px; position:sticky; top:0; z-index:2; padding-top:6px; background:var(--menu-bg); border-bottom:1px solid var(--menu-border); margin-top:-6px; }
   .tab-btn{
     padding:8px 12px; border-radius:999px; background:var(--panel-bg); border:1px solid var(--panel-border); color:#cfe0ff; cursor:pointer;
@@ -675,6 +696,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
       <div class="toolbar">
         <button id="addStudentBtn" class="btn accent">+ Add Student</button>
         <button id="bulkAddBtn" class="btn">Bulk Add</button>
+        <button id="droppedBtn" class="btn">Dropped</button>
 
         <label class="toggle"><span class="muted">Name format:</span>
           <select id="nameFormat" class="select" title="Name Display">
@@ -730,7 +752,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
               <th class="th">Growth needed <span class="sort" data-sort="growth">↕</span></th>
 
               <th class="th col-actions">
-                <button id="toggleRemove" class="icon-btn actions-toggle" title="Show remove buttons">Remove…</button>
+                <button id="toggleRemove" class="icon-btn actions-toggle" title="Show drop buttons">Drop…</button>
               </th>
             </tr>
           </thead>
@@ -805,7 +827,34 @@ Weasley, Ron"></textarea>
     </div>
   </div>
 
-  <!-- Shortcuts Modal -->
+  <!-- Dropped Students Modal -->
+  <div id="droppedModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Dropped Students">
+      <h3>Dropped Students <span class="muted" id="droppedCount" style="font-weight:600"></span></h3>
+      <p class="muted" style="margin-top:-2px">Dropped students are archived (not deleted). You can restore them any time.</p>
+      <input id="droppedSearch" class="search" style="width:100%" placeholder="Search dropped students…" />
+      <div id="droppedList" class="drop-list" style="margin-top:10px;"></div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button id="droppedCloseBtn" class="btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dropped Student Details Modal -->
+  <div id="droppedDetailModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Dropped Student Details">
+      <h3 id="droppedDetailTitle">Student</h3>
+      <div class="divider"></div>
+      <div id="droppedDetailBody" class="drop-detail"></div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button id="droppedDetailClose" class="btn">Close</button>
+        <div class="spacer"></div>
+        <button id="droppedDetailRestore" class="btn accent">Restore to Class</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Shortcuts Modal -->
   <div id="shortcutsModal" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Keyboard Shortcuts">
       <h3>Keyboard Shortcuts</h3>
@@ -1032,6 +1081,13 @@ function ensureStudent(st){
   s.customData ??= {};
   return s;
 }
+
+function ensureDroppedStudent(st){
+  const s = ensureStudent(st);
+  s.droppedAt ??= null;
+  return s;
+}
+
 function ensureCustomCol(col){
   const c = col || {};
   c.id ??= crypto.randomUUID();
@@ -1053,6 +1109,7 @@ function ensureClass(c){
   c.name ??= "Period _";
   c.columns ??= {fall:true,winter:true,spring:true};
   c.students = Array.isArray(c.students) ? c.students.map(ensureStudent) : [];
+  c.droppedStudents = Array.isArray(c.droppedStudents) ? c.droppedStudents.map(ensureDroppedStudent) : [];
   // NEW: custom tabs are stored per-class so names/columns can differ by class
   c.customTabs = Array.isArray(c.customTabs) ? c.customTabs.map(ensureCustomTab) : [];
   return c;
@@ -1147,6 +1204,10 @@ let state = load();
 /* ===================== DOM Helpers ===================== */
 const qs = (sel, el=document)=>el.querySelector(sel);
 const qsa = (sel, el=document)=>Array.from(el.querySelectorAll(sel));
+const escapeHtml = (value)=>{
+  const s = (value==null) ? "" : String(value);
+  return s.replace(/[&<>"']/g, ch=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[ch]));
+};
 function getActiveClass(){ return state.classes.find(c=>c.id===state.activeClassId) || state.classes[0]; }
 function getActiveCustomTabs(){
   const cls = getActiveClass();
@@ -1435,8 +1496,15 @@ function renderDiagnostics(){
   qs("#nameFormat").value = state.nameFormat;
   qs("#searchBox").value = state.search || "";
 
+  // Dropped students button
+  const droppedBtn = qs("#droppedBtn");
+  if(droppedBtn){
+    const nDropped = (cls.droppedStudents || []).length;
+    droppedBtn.textContent = nDropped ? `Dropped (${nDropped})` : "Dropped";
+  }
+
   const removeHdrBtn = qs("#toggleRemove");
-  if(removeHdrBtn) removeHdrBtn.textContent = state.showRemove ? "Done" : "Remove…";
+  if(removeHdrBtn) removeHdrBtn.textContent = state.showRemove ? "Done" : "Drop…";
 
   // spring6 header visibility
   qsa(".spring6col").forEach(el=> el.style.display = state.showSpring6 ? "" : "none");
@@ -1609,14 +1677,26 @@ function renderDiagnostics(){
     const tdAct = document.createElement("td"); tdAct.className="td col-actions";
     if(state.showRemove){
       const actions = document.createElement("div"); actions.className="row-actions";
-      const rm = document.createElement("button"); rm.className="icon-btn"; rm.textContent="Remove";
-      rm.addEventListener("click", ()=>{
-        if(!confirm(`Remove ${fmtName(s)}?`)) return;
-        const arr = getActiveClass().students;
+      const drop = document.createElement("button"); drop.className="icon-btn"; drop.textContent="Drop";
+      drop.addEventListener("click", ()=>{
+        const cls = getActiveClass();
+        const msg = `Drop ${fmtName(s)} from ${cls.name}?\n\nThis removes the student from the class list but keeps ALL of their data in Dropped Students.`;
+        if(!confirm(msg)) return;
+
+        cls.droppedStudents ??= [];
+        if(!cls.droppedStudents.some(x=>x.id===s.id)){
+          s.droppedAt = Date.now();
+          cls.droppedStudents.unshift(s);
+        }
+
+        const arr = cls.students;
         const i = arr.findIndex(x=>x.id===s.id);
-        if(i>=0){ arr.splice(i,1); save(); renderAll(); }
+        if(i>=0) arr.splice(i,1);
+
+        save(); renderAll();
+        try{ if(droppedModal && droppedModal.classList.contains("open")) renderDroppedList(); }catch(e){}
       });
-      actions.append(rm);
+      actions.append(drop);
       tdAct.appendChild(actions);
     }
     tr.appendChild(tdAct);
@@ -1764,6 +1844,255 @@ qs("#bulkConfirmBtn").addEventListener("click", ()=>{
   bulkModal.classList.remove("open"); bulkModal.setAttribute("aria-hidden","true");
   renderAll();
 });
+
+/* ===================== Dropped Students ===================== */
+const droppedModal = qs("#droppedModal");
+const droppedSearch = qs("#droppedSearch");
+const droppedList = qs("#droppedList");
+const droppedCountEl = qs("#droppedCount");
+
+const droppedDetailModal = qs("#droppedDetailModal");
+const droppedDetailTitle = qs("#droppedDetailTitle");
+const droppedDetailBody  = qs("#droppedDetailBody");
+const droppedDetailRestoreBtn = qs("#droppedDetailRestore");
+let droppedDetailId = null;
+
+function openDroppedModal(){
+  if(!droppedModal) return;
+  droppedSearch.value = "";
+  renderDroppedList();
+  droppedModal.classList.add("open");
+  droppedModal.setAttribute("aria-hidden","false");
+  setTimeout(()=>{ try{ droppedSearch.focus(); }catch(e){} }, 30);
+}
+function closeDroppedModal(){
+  if(!droppedModal) return;
+  droppedModal.classList.remove("open");
+  droppedModal.setAttribute("aria-hidden","true");
+}
+function openDroppedDetail(id){
+  const cls = getActiveClass();
+  const st = (cls.droppedStudents||[]).find(x=>x.id===id);
+  if(!st) return;
+
+  droppedDetailId = id;
+  droppedDetailTitle.textContent = `${fmtName(st)} (Dropped)`;
+  droppedDetailBody.innerHTML = "";
+
+  const wrap = document.createElement("div");
+  wrap.className = "drop-detail-grid";
+
+  // Scores block
+  const scoreBlock = document.createElement("div");
+  scoreBlock.className = "drop-block";
+  const sh = document.createElement("div"); sh.className="drop-block-title"; sh.textContent="Diagnostics";
+  scoreBlock.appendChild(sh);
+
+  const addScore = (label, obj)=>{
+    const row = document.createElement("div"); row.className="drop-kv";
+    const k = document.createElement("div"); k.className="drop-k"; k.textContent=label;
+    const v = document.createElement("div"); v.className="drop-v";
+    const score = (obj && obj.score!=null && obj.score!=="") ? obj.score : "—";
+    const lvl = (obj && obj.level) ? obj.level : "";
+    v.textContent = lvl ? `${score} (${lvl})` : `${score}`;
+    row.append(k,v);
+    scoreBlock.appendChild(row);
+  };
+
+  if(st.spring6 && (st.spring6.score!=null || st.spring6.level)) addScore("Spring (6th)", st.spring6);
+  addScore("Fall", st.fall);
+  addScore("Winter", st.winter);
+  addScore("Spring", st.spring);
+
+  const goalsRow = document.createElement("div"); goalsRow.className="drop-kv";
+  goalsRow.innerHTML = `<div class="drop-k">Goals</div><div class="drop-v">Typical: ${st.typicalGoal ?? "—"} • Stretch: ${st.stretchGoal ?? "—"}</div>`;
+  scoreBlock.appendChild(goalsRow);
+
+  const tardyRow = document.createElement("div"); tardyRow.className="drop-kv";
+  tardyRow.innerHTML = `<div class="drop-k">Tardies</div><div class="drop-v">${st.tardies ?? 0}</div>`;
+  scoreBlock.appendChild(tardyRow);
+
+  if(st.note){
+    const noteRow = document.createElement("div"); noteRow.className="drop-kv";
+    noteRow.innerHTML = `<div class="drop-k">Note</div><div class="drop-v">${escapeHtml(st.note)}</div>`;
+    scoreBlock.appendChild(noteRow);
+  }
+
+  wrap.appendChild(scoreBlock);
+
+  // Custom tabs block (non-empty only)
+  const tabsBlock = document.createElement("div");
+  tabsBlock.className = "drop-block";
+  const th = document.createElement("div"); th.className="drop-block-title"; th.textContent="Custom Tabs";
+  tabsBlock.appendChild(th);
+
+  const tabs = cls.customTabs || [];
+  let any = false;
+  for(const tab of tabs){
+    const tabData = ((st.customData||{})[tab.id]) || {};
+    const items = [];
+    for(const col of (tab.columns||[])){
+      const cell = tabData[col.id];
+      if(!cell) continue;
+
+      let out = "";
+      if(col.type==="checkbox"){
+        if(cell.v) out = "✓";
+      }else if(col.type==="counter"){
+        if((cell.value||0)!==0) out = String(cell.value||0);
+      }else if(col.type==="dropdown"){
+        if(cell.value) out = String(cell.value);
+      }else if(col.type==="num"){
+        if(cell.value!=null && cell.value!=="" && !Number.isNaN(cell.value)) out = String(cell.value);
+      }else{
+        if(cell.text) out = String(cell.text);
+      }
+
+      if(out){
+        items.push({name: col.name || "Column", value: out});
+      }
+    }
+
+    if(items.length){
+      any = true;
+      const section = document.createElement("div");
+      section.className = "drop-subblock";
+      const title = document.createElement("div"); title.className="drop-subtitle"; title.textContent=tab.name || "Tab";
+      section.appendChild(title);
+      items.forEach(it=>{
+        const row = document.createElement("div"); row.className="drop-kv";
+        row.innerHTML = `<div class="drop-k">${escapeHtml(it.name)}</div><div class="drop-v">${escapeHtml(it.value)}</div>`;
+        section.appendChild(row);
+      });
+      tabsBlock.appendChild(section);
+    }
+  }
+
+  if(!any){
+    const none = document.createElement("div");
+    none.className = "muted";
+    none.textContent = "No custom-tab data found (or everything is blank).";
+    tabsBlock.appendChild(none);
+  }
+
+  // Dropped meta
+  const metaBlock = document.createElement("div");
+  metaBlock.className = "drop-block";
+  const mh = document.createElement("div"); mh.className="drop-block-title"; mh.textContent="Archive Info";
+  metaBlock.appendChild(mh);
+  const metaRow = document.createElement("div"); metaRow.className="drop-kv";
+  const droppedAt = st.droppedAt ? new Date(st.droppedAt).toLocaleString() : "—";
+  metaRow.innerHTML = `<div class="drop-k">Dropped at</div><div class="drop-v">${escapeHtml(droppedAt)}</div>`;
+  metaBlock.appendChild(metaRow);
+
+  wrap.append(tabsBlock, metaBlock);
+  droppedDetailBody.appendChild(wrap);
+
+  droppedDetailModal.classList.add("open");
+  droppedDetailModal.setAttribute("aria-hidden","false");
+}
+function closeDroppedDetail(){
+  if(!droppedDetailModal) return;
+  droppedDetailModal.classList.remove("open");
+  droppedDetailModal.setAttribute("aria-hidden","true");
+  droppedDetailId = null;
+}
+
+function restoreDropped(id){
+  const cls = getActiveClass();
+  cls.droppedStudents ??= [];
+  const i = cls.droppedStudents.findIndex(x=>x.id===id);
+  if(i<0) return;
+  const st = cls.droppedStudents[i];
+
+  if(cls.students.some(x=>x.id===st.id)){
+    cls.droppedStudents.splice(i,1);
+    save(); renderAll();
+    renderDroppedList();
+    return;
+  }
+
+  cls.students.push(st);
+  cls.droppedStudents.splice(i,1);
+  save(); renderAll();
+  renderDroppedList();
+}
+
+function deleteDropped(id){
+  const cls = getActiveClass();
+  cls.droppedStudents ??= [];
+  const st = cls.droppedStudents.find(x=>x.id===id);
+  const nm = st ? fmtName(st) : "this student";
+  if(!confirm(`Permanently delete archived data for ${nm}?\n\nThis cannot be undone.`)) return;
+  const i = cls.droppedStudents.findIndex(x=>x.id===id);
+  if(i>=0) cls.droppedStudents.splice(i,1);
+  save(); renderAll();
+  renderDroppedList();
+  if(droppedDetailId===id) closeDroppedDetail();
+}
+
+function renderDroppedList(){
+  if(!droppedList) return;
+  const cls = getActiveClass();
+  cls.droppedStudents ??= [];
+  const all = [...cls.droppedStudents];
+  const q = (droppedSearch.value||"").trim().toLowerCase();
+  const list = q ? all.filter(s=>fmtName(s).toLowerCase().includes(q)) : all;
+
+  if(droppedCountEl){
+    droppedCountEl.textContent = all.length ? `(${list.length}${q?` of ${all.length}`:""})` : "";
+  }
+
+  droppedList.innerHTML = "";
+  if(!all.length){
+    const none = document.createElement("div");
+    none.className="muted";
+    none.textContent="No dropped students for this class.";
+    droppedList.appendChild(none);
+    return;
+  }
+
+  list.sort((a,b)=>fmtName(a).localeCompare(fmtName(b)));
+
+  list.forEach(st=>{
+    const row = document.createElement("div"); row.className="drop-row";
+
+    const left = document.createElement("div"); left.className="drop-left";
+    const nm = document.createElement("div"); nm.className="drop-name"; nm.textContent=fmtName(st);
+    const meta = document.createElement("div"); meta.className="muted drop-meta";
+    meta.textContent = st.droppedAt ? `Dropped ${new Date(st.droppedAt).toLocaleDateString()}` : "";
+    left.append(nm, meta);
+
+    const actions = document.createElement("div"); actions.className="drop-actions";
+    const view = document.createElement("button"); view.className="btn"; view.textContent="View";
+    view.addEventListener("click", ()=>openDroppedDetail(st.id));
+
+    const restore = document.createElement("button"); restore.className="btn accent"; restore.textContent="Restore";
+    restore.addEventListener("click", ()=>restoreDropped(st.id));
+
+    const del = document.createElement("button"); del.className="btn bad"; del.textContent="Delete";
+    del.addEventListener("click", ()=>deleteDropped(st.id));
+
+    actions.append(view, restore, del);
+    row.append(left, actions);
+    droppedList.appendChild(row);
+  });
+}
+
+// events
+qs("#droppedBtn")?.addEventListener("click", openDroppedModal);
+qs("#droppedCloseBtn")?.addEventListener("click", closeDroppedModal);
+droppedModal?.addEventListener("click",(e)=>{ if(e.target===droppedModal) closeDroppedModal(); });
+droppedSearch?.addEventListener("input", renderDroppedList);
+
+qs("#droppedDetailClose")?.addEventListener("click", closeDroppedDetail);
+droppedDetailModal?.addEventListener("click",(e)=>{ if(e.target===droppedDetailModal) closeDroppedDetail(); });
+droppedDetailRestoreBtn?.addEventListener("click", ()=>{
+  if(droppedDetailId) restoreDropped(droppedDetailId);
+  closeDroppedDetail();
+  closeDroppedModal();
+});
+
 
 /* ===================== Shortcuts Modal ===================== */
 const shortcutsModal = qs("#shortcutsModal");
