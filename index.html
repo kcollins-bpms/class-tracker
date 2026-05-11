@@ -679,6 +679,55 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .level-chip.lvl-silver{ background:#c0c0c0 !important; color:#041222 !important; border:1px solid #a8a8a8 !important; }
 </style>
 
+
+
+<style id="fall-spring-name-and-chart-cleanup">
+/* Fall→Spring growth coloring for student names */
+.name-cell.name-up .name-wrap{ color:#7dff99 !important; }
+.name-cell.name-down .name-wrap{ color:#ff9a9a !important; }
+.name-cell.name-same .name-wrap{ color:#cbd6ff !important; }
+.name-cell.name-up{ box-shadow:inset 4px 0 0 #2dd36f, inset 0 0 0 9999px rgba(30,123,52,.14) !important; }
+.name-cell.name-down{ box-shadow:inset 4px 0 0 #ef4444, inset 0 0 0 9999px rgba(163,35,35,.14) !important; }
+.name-cell.name-same{ box-shadow:inset 4px 0 0 var(--neutral), inset 0 0 0 9999px rgba(49,64,107,.14) !important; }
+.growth-note{ display:block; margin-top:4px; font-size:11px; font-weight:700; color:var(--muted); }
+
+/* Cleaner student-card Charts tab */
+.chart-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(120px,1fr));
+  gap:10px;
+  margin-bottom:12px;
+}
+.chart-stat{
+  background:var(--field-bg);
+  border:1px solid var(--panel-border);
+  border-radius:14px;
+  padding:10px;
+}
+.chart-stat-label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:800; }
+.chart-stat-value{ margin-top:4px; font-size:20px; font-weight:900; line-height:1.1; }
+.chart-stat-value.up{ color:#7dff99; }
+.chart-stat-value.down{ color:#ff9a9a; }
+.chart-stat-value.same{ color:#cbd6ff; }
+.chart-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.chart-card{
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--panel-border);
+  border-radius:14px;
+  padding:10px;
+}
+.chart-card.wide{ grid-column:1 / -1; }
+.chart-title{ font-weight:900; margin-bottom:3px; }
+.chart-note{ font-size:12px; color:var(--muted); margin-bottom:8px; }
+.chart{ height:210px; }
+.chart.compact{ height:132px; }
+@media (max-width:760px){
+  .chart-summary{ grid-template-columns:1fr 1fr; }
+  .chart-grid{ grid-template-columns:1fr; }
+  .chart-card.wide{ grid-column:auto; }
+}
+</style>
+
 </head>
 <body data-theme="navy">
   <div class="wrap">
@@ -944,21 +993,32 @@ Weasley, Ron"></textarea>
 
       <!-- Charts -->
       <div id="tab-ch" class="modal-section">
-        <div class="field">
-          <label>Score progression</label>
-          <canvas id="chartProgress" class="chart" width="800" height="220"></canvas>
-        </div>
-        <div class="field" style="margin-top:8px">
-          <label>Delta bars</label>
-          <canvas id="chartDeltas" class="chart" width="800" height="220"></canvas>
-        </div>
-        <div class="field" style="margin-top:8px">
-          <label>Reading level timeline</label>
-          <canvas id="chartLevels" class="chart" width="800" height="120"></canvas>
-        </div>
-        <div class="field" style="margin-top:8px">
-          <label>Goal gap sparkline</label>
-          <canvas id="chartGap" class="chart" width="800" height="120"></canvas>
+        <div id="chartSummary" class="chart-summary" aria-label="Student chart summary"></div>
+
+        <div class="chart-grid">
+          <div class="chart-card wide">
+            <div class="chart-title">Diagnostic score progression</div>
+            <div class="chart-note">Fall, Winter, and Spring scores with typical/stretch goal lines when available.</div>
+            <canvas id="chartProgress" class="chart" width="800" height="220"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">Growth between tests</div>
+            <div class="chart-note">Positive bars show growth; negative bars show score drops.</div>
+            <canvas id="chartDeltas" class="chart" width="800" height="220"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">Goal gap</div>
+            <div class="chart-note">How many points remain to reach typical and stretch goals.</div>
+            <canvas id="chartGap" class="chart compact" width="800" height="132"></canvas>
+          </div>
+
+          <div class="chart-card wide">
+            <div class="chart-title">Reading level timeline</div>
+            <div class="chart-note">Level colors across each diagnostic window.</div>
+            <canvas id="chartLevels" class="chart compact" width="800" height="132"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -1265,12 +1325,9 @@ function deltaBetween(stu, a, b){
   return { from:nx, to:ny, delta: ny - nx };
 }
 function nameStateClass(stu){
-  // prefer latest visible delta: Spring6 vs Fall (shown near Spring6), else Winter→Spring, else Fall→Winter
-  const cls = getActiveClass(), v = cls.columns;
-  let d = null;
-  if(state.showSpring6) d = deltaBetween(stu,"spring","spring6");
-  if(!d && v.winter && v.spring) d = deltaBetween(stu,"winter","spring");
-  if(!d && v.fall && v.winter) d = deltaBetween(stu,"fall","winter");
+  // Student name color is based specifically on Fall → Spring diagnostic growth.
+  // Green = Spring is higher than Fall; red = Spring is lower than Fall; neutral = no change/missing data.
+  const d = deltaBetween(stu,"fall","spring");
   if(!d) return "name-default";
   if(d.delta>0) return "name-up";
   if(d.delta<0) return "name-down";
@@ -1567,6 +1624,13 @@ function renderDiagnostics(){
     tdName.className = `td name-cell ${nameStateClass(s)}`;
     const nameWrap = document.createElement("div"); nameWrap.className="name-wrap"; nameWrap.textContent = fmtName(s);
     tdName.appendChild(nameWrap);
+    const fallSpringDelta = deltaBetween(s,"fall","spring");
+    if(fallSpringDelta){
+      const note = document.createElement("span");
+      note.className = "growth-note";
+      note.textContent = `F→S ${fallSpringDelta.delta>0?"+":""}${fallSpringDelta.delta}`;
+      tdName.appendChild(note);
+    }
     tdName.addEventListener("click", ()=>openStudentModal(s.id));
     tr.appendChild(tdName);
 
@@ -3114,93 +3178,214 @@ function clearCanvas(c){
   c.width = cssW*dpr; c.height = cssH*dpr;
   ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,cssW,cssH);
+  ctx.__cssW = cssW;
+  ctx.__cssH = cssH;
   return ctx;
 }
-function mapSeries(vals, w, h, minY, maxY, left=40, right=10, top=10, bottom=24){
-  const innerW = w - left - right, innerH = h - top - bottom;
+function chartColor(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+function chartTextColor(){ return chartColor("--text") || "#e7ecff"; }
+function chartMutedColor(){ return chartColor("--muted") || "#a8b2d1"; }
+function drawEmptyChart(ctx, message="No chart data yet"){
+  const w = ctx.__cssW || 800, h = ctx.__cssH || 220;
+  ctx.fillStyle = chartMutedColor();
+  ctx.font = "13px ui-sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(message, w/2, h/2);
+  ctx.textAlign = "left";
+}
+function niceRange(values){
+  const nums = values.filter(v=>v!=null && !Number.isNaN(Number(v))).map(Number);
+  if(!nums.length) return {min:300,max:700};
+  let min = Math.min(...nums), max = Math.max(...nums);
+  if(min===max){ min -= 10; max += 10; }
+  const pad = Math.max(10, Math.round((max-min)*0.15));
+  return {min:min-pad, max:max+pad};
+}
+function mapSeries(vals, w, h, minY, maxY, left=50, right=18, top=18, bottom=34){
+  const innerW = Math.max(1, w - left - right), innerH = Math.max(1, h - top - bottom);
   const xs = vals.map((_,i)=> left + (i/(Math.max(1,vals.length-1)))*innerW );
-  const ys = vals.map(v => v==null ? null : top + (1 - ((v - minY) / (maxY - minY || 1)))*innerH);
-  return vals.map((v,i)=> v==null ? null : {x:xs[i], y:ys[i]});
+  const ys = vals.map(v => v==null ? null : top + (1 - ((Number(v) - minY) / (maxY - minY || 1)))*innerH);
+  return vals.map((v,i)=> v==null ? null : {x:xs[i], y:ys[i], value:Number(v)});
 }
 function drawLine(ctx, pts, color="#7db4ff", w=2){
   ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineJoin="round"; ctx.lineCap="round";
   ctx.beginPath(); let started=false;
   pts.forEach(p=>{ if(!p) return; if(!started){ ctx.moveTo(Math.round(p.x),Math.round(p.y)); started=true; } else { ctx.lineTo(Math.round(p.x),Math.round(p.y)); }});
-  ctx.stroke();
+  if(started) ctx.stroke();
 }
 function drawDots(ctx, pts, color="#7db4ff"){
-  ctx.fillStyle=color; pts.forEach(p=>{ if(!p) return; ctx.beginPath(); ctx.arc(Math.round(p.x),Math.round(p.y),3,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle=color;
+  pts.forEach(p=>{ if(!p) return; ctx.beginPath(); ctx.arc(Math.round(p.x),Math.round(p.y),4,0,Math.PI*2); ctx.fill(); });
+}
+function drawGoalLine(ctx, value, label, range, color, dash=[6,6]){
+  if(value==null || Number.isNaN(Number(value))) return;
+  const w = ctx.__cssW || 800, h = ctx.__cssH || 220;
+  const p = mapSeries([Number(value), Number(value)], w, h, range.min, range.max)[0];
+  ctx.setLineDash(dash);
+  ctx.strokeStyle=color;
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(50,p.y); ctx.lineTo(w-18,p.y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=color;
+  ctx.font="12px ui-sans-serif";
+  ctx.fillText(label, w-104, Math.max(14, p.y-5));
+}
+function renderChartSummary(s){
+  const host = qs("#chartSummary");
+  if(!host) return;
+  const d = deltaBetween(s,"fall","spring");
+  const latestKey = latestVisibleKey(s);
+  const latestScore = latestKey ? s[latestKey]?.score : null;
+  const gap = growthNeeded(s);
+  const items = [
+    {label:"Fall → Spring", value:d ? `${d.delta>0?"+":""}${d.delta}` : "—", cls:d ? (d.delta>0?"up":d.delta<0?"down":"same") : ""},
+    {label:"Latest score", value:latestScore ?? "—", cls:""},
+    {label:"Typical gap", value:gap.t==null ? "—" : gap.t, cls:gap.t===0 ? "up" : ""},
+    {label:"Stretch gap", value:gap.s==null ? "—" : gap.s, cls:gap.s===0 ? "up" : ""}
+  ];
+  host.innerHTML = items.map(item=>`
+    <div class="chart-stat">
+      <div class="chart-stat-label">${escapeHtml(item.label)}</div>
+      <div class="chart-stat-value ${item.cls||""}">${escapeHtml(item.value)}</div>
+    </div>
+  `).join("");
 }
 function drawChartsForStudent(s){
+  renderChartSummary(s);
   const show6 = state.showSpring6;
-  const labels = ["Fall","Winter","Spring"].concat(show6?["Spring6"]:[]);
+  const labels = ["Fall","Winter","Spring"].concat(show6?["Spring (6th)"]:[]);
   const series = [s.fall.score, s.winter.score, s.spring.score].concat(show6?[s.spring6.score]:[]);
-  const present = series.filter(v=>v!=null);
-  const min = (present.length?Math.min(...present):300) - 10;
-  const max = (present.length?Math.max(...present):700) + 10;
+  const goalVals = [s.typicalGoal, s.stretchGoal].filter(v=>v!=null);
+  const range = niceRange(series.concat(goalVals));
 
-  // Progress
-  const c1 = qs("#chartProgress"); const ctx1 = clearCanvas(c1);
-  const pts = mapSeries(series, c1.clientWidth, c1.clientHeight, min, max);
-  ctx1.strokeStyle="#385087"; ctx1.lineWidth=1; ctx1.globalAlpha=.5; ctx1.beginPath();
-  for(let i=0;i<labels.length;i++){ const x=40 + (i/(labels.length-1))*(c1.clientWidth-50); ctx1.moveTo(x,10); ctx1.lineTo(x,c1.clientHeight-24); }
-  ctx1.stroke(); ctx1.globalAlpha=1;
-  drawLine(ctx1, pts.filter(Boolean), "#7db4ff", 2); drawDots(ctx1, pts.filter(Boolean), "#7db4ff");
-  if(s.typicalGoal!=null){ ctx1.setLineDash([6,6]); ctx1.strokeStyle="#2dd36f"; ctx1.beginPath(); const y = mapSeries([s.typicalGoal], c1.clientWidth, c1.clientHeight, min, max)[0].y; ctx1.moveTo(40,y); ctx1.lineTo(c1.clientWidth-10,y); ctx1.stroke(); ctx1.setLineDash([]); }
-  if(s.stretchGoal!=null){ ctx1.setLineDash([4,6]); ctx1.strokeStyle="#ffbf66"; ctx1.beginPath(); const y = mapSeries([s.stretchGoal], c1.clientWidth, c1.clientHeight, min, max)[0].y; ctx1.moveTo(40,y); ctx1.lineTo(c1.clientWidth-10,y); ctx1.stroke(); ctx1.setLineDash([]); }
-
-  // Deltas
-  const c2 = qs("#chartDeltas"); const ctx2 = clearCanvas(c2);
-  const pairs = [["Fall","Winter", deltaBetween(s,"fall","winter")?.delta ?? null],
-                 ["Winter","Spring", deltaBetween(s,"winter","spring")?.delta ?? null]]
-                 .concat(show6?[["Spring","Spring6", deltaBetween(s,"spring","spring6")?.delta ?? null]]:[]);
-  const bw = Math.max(24, Math.floor((c2.clientWidth-60) / Math.max(1,pairs.length*2)));
-  let x = 40;
-  pairs.forEach(([a,b,val])=>{
-    const y0 = c2.clientHeight-24;
-    const scale = 2.0;
-    const h = val==null ? 0 : Math.max(-80, Math.min(80, val*scale));
-    ctx2.fillStyle = val==null ? "#3a4e8d" : (val>=0 ? "#2dd36f" : "#ef4444");
-    const topY = h>=0 ? (y0-h) : y0;
-    ctx2.fillRect(Math.round(x), Math.round(h>=0?topY:y0), bw, Math.max(2, Math.abs(Math.round(h))));
-    ctx2.fillStyle="#cfe0ff"; ctx2.font="12px ui-sans-serif"; ctx2.fillText(`${a}→${b}`, Math.round(x), c2.clientHeight-8);
-    x += bw + 24;
+  // Progress chart
+  const c1 = qs("#chartProgress"), ctx1 = clearCanvas(c1);
+  const w1 = ctx1.__cssW, h1 = ctx1.__cssH;
+  const pts = mapSeries(series, w1, h1, range.min, range.max);
+  ctx1.strokeStyle = "rgba(120,150,210,.35)";
+  ctx1.lineWidth = 1;
+  ctx1.beginPath();
+  for(let i=0;i<labels.length;i++){
+    const x = 50 + (i/Math.max(1,labels.length-1))*(w1-68);
+    ctx1.moveTo(x,18); ctx1.lineTo(x,h1-34);
+  }
+  for(let i=0;i<=2;i++){
+    const y = 18 + i*((h1-52)/2);
+    ctx1.moveTo(50,y); ctx1.lineTo(w1-18,y);
+  }
+  ctx1.stroke();
+  drawGoalLine(ctx1, s.typicalGoal, "Typical", range, "#2dd36f", [6,6]);
+  drawGoalLine(ctx1, s.stretchGoal, "Stretch", range, "#ffbf66", [4,6]);
+  drawLine(ctx1, pts.filter(Boolean), "#7db4ff", 3);
+  drawDots(ctx1, pts.filter(Boolean), "#7db4ff");
+  ctx1.fillStyle = chartTextColor();
+  ctx1.font = "12px ui-sans-serif";
+  ctx1.textAlign = "center";
+  pts.forEach((p,i)=>{
+    const x = 50 + (i/Math.max(1,labels.length-1))*(w1-68);
+    ctx1.fillStyle = chartMutedColor();
+    ctx1.fillText(labels[i], x, h1-10);
+    if(p){ ctx1.fillStyle = chartTextColor(); ctx1.fillText(String(series[i]), p.x, Math.max(14, p.y-9)); }
   });
+  ctx1.textAlign = "left";
+  if(!pts.some(Boolean)) drawEmptyChart(ctx1, "Enter diagnostic scores to see progression");
 
-  // Levels
-  const c3 = qs("#chartLevels"); const ctx3 = clearCanvas(c3);
+  // Delta chart
+  const c2 = qs("#chartDeltas"), ctx2 = clearCanvas(c2);
+  const w2 = ctx2.__cssW, h2 = ctx2.__cssH;
+  const pairs = [
+    ["Fall→Winter", deltaBetween(s,"fall","winter")?.delta ?? null],
+    ["Winter→Spring", deltaBetween(s,"winter","spring")?.delta ?? null],
+    ["Fall→Spring", deltaBetween(s,"fall","spring")?.delta ?? null]
+  ].concat(show6?[["6th→Fall", deltaBetween(s,"spring6","fall")?.delta ?? null]]:[]);
+  const vals = pairs.map(p=>p[1]).filter(v=>v!=null);
+  const maxAbs = Math.max(10, ...vals.map(v=>Math.abs(v)));
+  const zeroY = Math.round(h2/2);
+  ctx2.strokeStyle = "rgba(120,150,210,.45)";
+  ctx2.beginPath(); ctx2.moveTo(36,zeroY); ctx2.lineTo(w2-14,zeroY); ctx2.stroke();
+  const gapX = (w2-70)/Math.max(1,pairs.length);
+  const bw = Math.max(34, Math.min(76, gapX*.58));
+  pairs.forEach(([label,val],i)=>{
+    const cx = 48 + i*gapX + gapX/2;
+    if(val==null){
+      ctx2.fillStyle = "rgba(120,150,210,.28)";
+      ctx2.fillRect(cx-bw/2, zeroY-2, bw, 4);
+      ctx2.fillStyle = chartMutedColor();
+      ctx2.font = "12px ui-sans-serif";
+      ctx2.textAlign = "center";
+      ctx2.fillText("—", cx, zeroY-10);
+    }else{
+      const barH = Math.max(3, Math.abs(val)/maxAbs*(h2/2-34));
+      ctx2.fillStyle = val>=0 ? "#2dd36f" : "#ef4444";
+      ctx2.fillRect(cx-bw/2, val>=0 ? zeroY-barH : zeroY, bw, barH);
+      ctx2.fillStyle = chartTextColor();
+      ctx2.font = "12px ui-sans-serif";
+      ctx2.textAlign = "center";
+      ctx2.fillText(`${val>0?"+":""}${val}`, cx, val>=0 ? zeroY-barH-8 : zeroY+barH+16);
+    }
+    ctx2.fillStyle = chartMutedColor();
+    ctx2.font = "11px ui-sans-serif";
+    ctx2.textAlign = "center";
+    ctx2.fillText(label, cx, h2-10);
+  });
+  ctx2.textAlign = "left";
+  if(!vals.length) drawEmptyChart(ctx2, "Enter two scores to see growth bars");
+
+  // Goal gap chart
+  const c4 = qs("#chartGap"), ctx4 = clearCanvas(c4);
+  const w4 = ctx4.__cssW, h4 = ctx4.__cssH;
+  const latestKey = latestVisibleKey(s);
+  const latest = latestKey ? s[latestKey]?.score : null;
+  const gaps = [
+    ["Typical", latest!=null && s.typicalGoal!=null ? Math.max(0, Math.round(s.typicalGoal - latest)) : null],
+    ["Stretch", latest!=null && s.stretchGoal!=null ? Math.max(0, Math.round(s.stretchGoal - latest)) : null]
+  ];
+  const maxGap = Math.max(10, ...gaps.map(([,g])=>g||0));
+  const barMax = w4 - 135;
+  gaps.forEach(([label,g],i)=>{
+    const y = 28 + i*48;
+    ctx4.fillStyle = chartMutedColor(); ctx4.font = "12px ui-sans-serif"; ctx4.textAlign = "right"; ctx4.fillText(label, 74, y+14);
+    ctx4.fillStyle = "rgba(120,150,210,.25)"; ctx4.fillRect(86, y, barMax, 22);
+    if(g!=null){
+      const bw = g===0 ? barMax : Math.max(4, (g/maxGap)*barMax);
+      ctx4.fillStyle = g===0 ? "#2dd36f" : "#facc15";
+      ctx4.fillRect(86, y, bw, 22);
+      ctx4.fillStyle = chartTextColor(); ctx4.textAlign = "left"; ctx4.fillText(g===0 ? "Met" : `${g} pts`, 96+Math.min(bw,barMax-54), y+15);
+    }else{
+      ctx4.fillStyle = chartMutedColor(); ctx4.textAlign = "left"; ctx4.fillText("—", 96, y+15);
+    }
+  });
+  ctx4.textAlign = "left";
+  if(latest==null) drawEmptyChart(ctx4, "Enter a score to compare against goals");
+
+  // Level timeline
+  const c3 = qs("#chartLevels"), ctx3 = clearCanvas(c3);
+  const w3 = ctx3.__cssW, h3 = ctx3.__cssH;
   const levs = [s.fall, s.winter, s.spring].concat(show6?[s.spring6]:[]);
-  const w = (c3.clientWidth-60)/Math.max(1,levs.length); let xl=40;
-  levs.forEach(entry=>{
+  const colorMap = {
+    "lvl-dark-green":"#0d7a3a","lvl-green":"#22c55e","lvl-yellow":"#facc15","lvl-red":"#ef4444","lvl-dark-red":"#7a1420",
+    "lvl-blue":"#3b82f6","lvl-purple":"#8b5cf6","lvl-orange":"#fb923c","lvl-pink":"#ec4899","lvl-black":"#111111","lvl-brown":"#6d4c41","lvl-silver":"#c0c0c0","lvl-empty":"#2b3a6a"
+  };
+  const cellW = (w3-40)/Math.max(1,levs.length);
+  levs.forEach((entry,i)=>{
+    const x = 20 + i*cellW;
     const cls = classForEntry(entry) || "lvl-empty";
-    const color = ({
-      "lvl-dark-green":"#0d7a3a","lvl-green":"#22c55e","lvl-yellow":"#facc15","lvl-red":"#ef4444","lvl-dark-red":"#7a1420","lvl-empty":"#2b3a6a"
-    })[cls];
-    ctx3.fillStyle=color; ctx3.strokeStyle="#1b2b58"; ctx3.lineWidth=1.5;
-    ctx3.fillRect(xl, 30, w-10, 40); ctx3.strokeRect(xl,30,w-10,40);
-    ctx3.fillStyle="#e7ecff"; ctx3.font="12px ui-sans-serif"; const txt=(entry?.level?.trim()||"-"); ctx3.fillText(txt, xl+6, 54);
-    xl += w;
+    ctx3.fillStyle = colorMap[cls] || colorMap["lvl-empty"];
+    ctx3.strokeStyle = "rgba(120,150,210,.45)";
+    ctx3.lineWidth = 1.5;
+    ctx3.fillRect(x+4, 34, cellW-8, 42);
+    ctx3.strokeRect(x+4,34,cellW-8,42);
+    ctx3.fillStyle = (cls==="lvl-yellow" || cls==="lvl-orange" || cls==="lvl-silver") ? "#1f2937" : "#f4f7ff";
+    ctx3.font = "bold 13px ui-sans-serif";
+    ctx3.textAlign = "center";
+    ctx3.fillText((entry?.level?.trim()||"-"), x+cellW/2, 60);
+    ctx3.fillStyle = chartMutedColor();
+    ctx3.font = "12px ui-sans-serif";
+    ctx3.fillText(labels[i], x+cellW/2, 100);
   });
-
-  // Goal gap
-  const c4 = qs("#chartGap"); const ctx4 = clearCanvas(c4);
-  const latest = (()=>{
-    const key = latestVisibleKey(s);
-    return key ? s[key]?.score : null;
-  })();
-  const gaps = [];
-  if(latest!=null && s.typicalGoal!=null) gaps.push(s.typicalGoal - latest);
-  if(latest!=null && s.stretchGoal!=null) gaps.push(s.stretchGoal - latest);
-  const maxGap = Math.max(1, Math.max(...gaps.map(v=>Math.abs(v)||0), 1));
-  const centerY = c4.clientHeight/2; const baseX=40; const barW=60;
-  gaps.forEach((g,i)=>{
-    const x = baseX + i*(barW+30);
-    const h = (Math.min(Math.max(g, -maxGap), maxGap) / maxGap) * (c4.clientHeight/2 - 20);
-    ctx4.fillStyle = (g<=0) ? "#2dd36f" : "#facc15";
-    const y = g<=0 ? (centerY - 2) : (centerY - h);
-    ctx4.fillRect(x, y, barW, Math.abs(h||2)+2);
-    ctx4.fillStyle="#cfe0ff"; ctx4.font="12px ui-sans-serif"; ctx4.fillText((i==0?"Typical":"Stretch")+": "+(g!=null?Math.max(0,Math.round(g)):"—"), x, c4.clientHeight-10);
-  });
+  ctx3.textAlign = "left";
 }
 
 /* ===================== Events (toolbars) ===================== */
