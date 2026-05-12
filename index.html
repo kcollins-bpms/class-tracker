@@ -758,6 +758,26 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .analysis-list-value{ font-weight:900; white-space:nowrap; }
 .analysis-list-value.up{ color:#7dff99; }
 .analysis-list-value.down{ color:#ff9a9a; }
+
+.combined-controls{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+.combined-view-tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.combined-view-tab{ padding:8px 12px; border-radius:999px; border:1px solid var(--panel-border); background:var(--field-bg); color:var(--text); cursor:pointer; font-weight:800; }
+.combined-view-tab.active{ background:var(--accent); color:#071027; border-color:#7db4ff; }
+.combined-period-panel{ display:none; margin-bottom:12px; padding:12px; border-radius:14px; border:1px solid var(--panel-border); background:rgba(255,255,255,.03); }
+.combined-period-panel.open{ display:block; }
+.combined-period-panel-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.period-picker{ display:flex; flex-wrap:wrap; gap:8px; }
+.period-check{ display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border-radius:999px; border:1px solid var(--panel-border); background:var(--field-bg); cursor:pointer; user-select:none; font-weight:800; }
+.period-check input{ width:16px; height:16px; cursor:pointer; }
+.combined-table-wrap{ overflow:auto; border-radius:14px; }
+.combined-name{ font-weight:900; cursor:pointer; }
+.combined-period{ font-size:12px; color:var(--muted); font-weight:800; margin-top:2px; }
+.combined-score{ white-space:nowrap; }
+.combined-delta{ font-weight:950; }
+.combined-delta.up{ color:#7dff99; }
+.combined-delta.down{ color:#ff9a9a; }
+.combined-sort{ cursor:pointer; opacity:.9; margin-left:5px; }
+.combined-empty{ padding:14px; border:1px solid var(--panel-border); background:var(--field-bg); border-radius:14px; color:var(--muted); }
 @media (max-width:860px){
   .analysis-grid{ grid-template-columns:1fr 1fr; }
   .analysis-panels{ grid-template-columns:1fr; }
@@ -859,6 +879,34 @@ a, .link, .btn.link{ color:var(--accent) !important; }
       </div>
       <div class="divider"></div>
       <div id="classAnalysisBody"></div>
+    </section>
+
+
+
+    <!-- COMBINED STUDENTS (built-in) -->
+    <section id="combinedStudents" class="card" aria-label="Combined Students" style="display:none;">
+      <div class="toolbar">
+        <h3 style="margin:0">Combined Students</h3>
+        <button id="combinedPeriodToggle" class="btn">Choose Periods</button>
+        <span id="combinedPeriodSummary" class="muted"></span>
+        <div class="spacer"></div>
+        <input id="combinedSearch" class="search" placeholder="Search all included students" />
+      </div>
+      <div class="divider"></div>
+      <div id="combinedPeriodPanel" class="combined-period-panel">
+        <div class="combined-period-panel-head">
+          <strong>Included periods</strong>
+          <div class="spacer"></div>
+          <button id="combinedSelectAll" class="btn">Select All</button>
+          <button id="combinedClearAll" class="btn">Clear</button>
+        </div>
+        <div id="combinedPeriodPicker" class="period-picker"></div>
+      </div>
+      <div class="combined-view-tabs">
+        <button class="combined-view-tab active" data-combined-view="students">Student List</button>
+        <button class="combined-view-tab" data-combined-view="analysis">Combined Analysis</button>
+      </div>
+      <div id="combinedStudentsBody"></div>
     </section>
 
     <!-- TARDIES (built-in) -->
@@ -1153,6 +1201,11 @@ const DEFAULT_DATA = {
   showSpring6: false,
   nameFormat: "firstLast",
   sort: { key:"name", dir:1 },
+  combinedSort: { key:"name", dir:1 },
+  combinedSearch: "",
+  combinedView: "students",
+  combinedPickerOpen: false,
+  combinedClassIds: [],
   search: "",
   theme: "navy",
   showRemove: false,
@@ -1237,6 +1290,12 @@ function ensureState(state){
   s.showSpring6 ??= false;
   s.nameFormat ??= "firstLast";
   s.sort ??= { key:"name", dir:1 };
+  s.combinedSort ??= { key:"name", dir:1 };
+  s.combinedSearch ??= "";
+  s.combinedView = s.combinedView === "analysis" ? "analysis" : "students";
+  s.combinedPickerOpen = !!s.combinedPickerOpen;
+  s.combinedClassIds = Array.isArray(s.combinedClassIds) ? s.combinedClassIds.filter(id=>s.classes.some(c=>c.id===id)) : [];
+  if(!s.combinedClassIds.length) s.combinedClassIds = s.classes.map(c=>c.id);
   s.search ??= "";
   s.theme ??= "navy";
   s.showRemove ??= false;
@@ -1253,8 +1312,9 @@ function ensureState(state){
     try{ delete s.customTabs; }catch(_){ s.customTabs = undefined; }
   }
 
-  s.tabsVisibility ??= { diagnostics:true, analysis:true, tardies:true };
+  s.tabsVisibility ??= { diagnostics:true, analysis:true, combined:true, tardies:true };
   s.tabsVisibility.analysis ??= true;
+  s.tabsVisibility.combined ??= true;
   s.customSort ??= {};
   s._lastSavedAt ??= Date.now();
   return s;
@@ -1445,7 +1505,9 @@ function renderClassTabs(){
   add.className = "add-class";
   add.addEventListener("click", ()=>{
     const name = prompt("Class name:", `Period ${state.classes.length+1}`) || `Period ${state.classes.length+1}`;
-    state.classes.push({ id:crypto.randomUUID(), name:name.trim(), students:[], columns:{fall:true,winter:true,spring:true} });
+    const newClass = { id:crypto.randomUUID(), name:name.trim(), students:[], columns:{fall:true,winter:true,spring:true} };
+    state.classes.push(newClass);
+    state.combinedClassIds = Array.isArray(state.combinedClassIds) ? [...new Set([...state.combinedClassIds, newClass.id])] : state.classes.map(c=>c.id);
     state.activeClassId = state.classes.at(-1).id;
     save(); renderAll();
   });
@@ -1466,6 +1528,7 @@ function renderAppNav(){
   appnav.innerHTML = "";
   if(state.tabsVisibility.diagnostics) appnav.appendChild(appTab("Diagnostics","diagnostics"));
   if(state.tabsVisibility.analysis) appnav.appendChild(appTab("Class Analysis","analysis"));
+  if(state.tabsVisibility.combined) appnav.appendChild(appTab("Combined Students","combined"));
   if(state.tabsVisibility.tardies) appnav.appendChild(appTab("Tardies","tardies"));
 
   // custom tabs (per-class)
@@ -1493,6 +1556,7 @@ function renderAppNav(){
 function hideAllScreens(){
   qs("#diagnostics").style.display="none";
   qs("#classAnalysis").style.display="none";
+  qs("#combinedStudents").style.display="none";
   qs("#tardies").style.display="none";
   qs("#settings").style.display="none";
   qsa("[data-custom-host]").forEach(el=> el.style.display="none");
@@ -1509,6 +1573,7 @@ function applyScreen(){
   const k = state.activeScreen;
   if(k==="diagnostics"){ qs("#diagnostics").style.display=""; renderDiagnostics(); updateActiveNav(); return; }
   if(k==="analysis"){ qs("#classAnalysis").style.display=""; renderClassAnalysis(); updateActiveNav(); return; }
+  if(k==="combined"){ qs("#combinedStudents").style.display=""; renderCombinedStudents(); updateActiveNav(); return; }
   if(k==="tardies"){ qs("#tardies").style.display=""; renderTardies(); updateActiveNav(); return; }
   if(k==="settings"){ qs("#settings").style.display=""; renderThemeChips(); updateActiveNav(); return; }
   if(k.startsWith("custom:")){
@@ -1892,15 +1957,19 @@ function buildConcernList(fsDeltas){
     .sort((a,b)=>concernScore(a)-concernScore(b) || fmtName(a.student).localeCompare(fmtName(b.student)))
     .slice(0,5);
 }
-function classAnalysisData(){
-  const cls = getActiveClass();
-  const students = (cls.students || []);
+function classAnalysisData(rows=null, label=null){
+  const activeCls = getActiveClass();
+  const entries = rows
+    ? rows.map(r=>({student:r.stu || r.student, className:r.cls?.name || r.className || ""})).filter(r=>r.student)
+    : (activeCls.students || []).map(stu=>({student:stu, className:activeCls?.name || ""}));
+  const cls = { name: label || activeCls?.name || "Current class" };
+  const students = entries.map(e=>e.student);
   const fallAvg = average(students.map(s=>scoreValue(s,"fall")));
   const winterAvg = average(students.map(s=>scoreValue(s,"winter")));
   const springAvg = average(students.map(s=>scoreValue(s,"spring")));
   const fwAvg = average(students.map(s=>deltaBetween(s,"fall","winter")?.delta ?? null));
   const wsAvg = average(students.map(s=>deltaBetween(s,"winter","spring")?.delta ?? null));
-  const fsDeltas = students.map(s=>({student:s, delta:deltaBetween(s,"fall","spring")?.delta ?? null})).filter(x=>x.delta!=null);
+  const fsDeltas = entries.map(e=>({student:e.student, className:e.className, delta:deltaBetween(e.student,"fall","spring")?.delta ?? null})).filter(x=>x.delta!=null);
   const fsAvg = average(fsDeltas.map(x=>x.delta));
   const improved = fsDeltas.filter(x=>x.delta>0).length;
   const declined = fsDeltas.filter(x=>x.delta<0).length;
@@ -1935,7 +2004,7 @@ function analysisListRows(items, emptyText){
   if(!items.length) return `<div class="muted">${escapeHtml(emptyText)}</div>`;
   return items.map(x=>`
     <div class="analysis-list-row">
-      <span class="analysis-list-name">${escapeHtml(fmtName(x.student))}${x.reason ? `<small>${escapeHtml(x.reason)}</small>` : ""}</span>
+      <span class="analysis-list-name">${escapeHtml(fmtName(x.student))}${[x.className, x.reason].filter(Boolean).length ? `<small>${escapeHtml([x.className, x.reason].filter(Boolean).join(" · "))}</small>` : ""}</span>
       <span class="analysis-list-value ${x.delta>0?"up":x.delta<0?"down":""}">${escapeHtml(formatSigned(x.delta))}</span>
     </div>
   `).join("");
@@ -2059,6 +2128,239 @@ function drawClassAnalysisCharts(data){
     if(!(data.typicalWithGoal || data.stretchWithGoal)) drawEmptyChart(ctx,"Enter goals and scores to see goal completion");
     else drawBarChart(ctx, rows);
   }
+}
+
+
+
+/* ===================== Combined Students ===================== */
+function scoreCellHtml(stu, key){
+  const score = scoreValue(stu, key);
+  const entry = stu?.[key] || {};
+  const lvl = (entry.level || "").trim();
+  const color = classForEntry(entry) || "lvl-empty";
+  if(score==null && !lvl) return `<span class="muted">—</span>`;
+  return `<span class="combined-score">${score==null?"—":escapeHtml(score)} ${lvl ? `<span class="level-chip ${escapeHtml(color)}" style="padding:3px 7px;margin-left:4px;">${escapeHtml(lvl)}</span>` : ""}</span>`;
+}
+function combinedDeltaHtml(delta){
+  if(delta==null) return `<span class="muted">—</span>`;
+  const cls = delta>0 ? "up" : delta<0 ? "down" : "";
+  return `<span class="combined-delta ${cls}">${escapeHtml(formatSigned(delta))}</span>`;
+}
+function combinedRows(){
+  const included = new Set((state.combinedClassIds || []).filter(id=>state.classes.some(c=>c.id===id)));
+  return state.classes
+    .filter(cls=>included.has(cls.id))
+    .flatMap(cls=>(cls.students || []).map(stu=>({cls, stu})));
+}
+function combinedSortValue(row, key){
+  const s = row.stu;
+  switch(key){
+    case "period": return (row.cls.name || "").toLowerCase();
+    case "name": return fmtName(s).toLowerCase();
+    case "fall": case "winter": case "spring": case "spring6": return scoreValue(s,key) ?? -Infinity;
+    case "delta_fw": return deltaBetween(s,"fall","winter")?.delta ?? -Infinity;
+    case "delta_ws": return deltaBetween(s,"winter","spring")?.delta ?? -Infinity;
+    case "delta_fs": return deltaBetween(s,"fall","spring")?.delta ?? -Infinity;
+    case "typical": return s.typicalGoal ?? -Infinity;
+    case "stretch": return s.stretchGoal ?? -Infinity;
+    default: return "";
+  }
+}
+function renderCombinedPeriodPicker(){
+  const picker = qs("#combinedPeriodPicker");
+  if(!picker) return;
+  const validIds = state.classes.map(c=>c.id);
+  state.combinedClassIds = (state.combinedClassIds || []).filter(id=>validIds.includes(id));
+  const selected = new Set(state.combinedClassIds);
+  picker.innerHTML = state.classes.map(cls=>`
+    <label class="period-check">
+      <input type="checkbox" data-class-id="${escapeHtml(cls.id)}" ${selected.has(cls.id)?"checked":""} />
+      <span>${escapeHtml(cls.name || "Class")}</span>
+    </label>
+  `).join("");
+  picker.querySelectorAll("input[data-class-id]").forEach(input=>{
+    input.addEventListener("change", ()=>{
+      const id = input.dataset.classId;
+      const next = new Set(state.combinedClassIds || []);
+      if(input.checked) next.add(id); else next.delete(id);
+      state.combinedClassIds = Array.from(next).filter(cid=>validIds.includes(cid));
+      save(); renderCombinedStudents();
+    });
+  });
+}
+function renderCombinedAnalysis(rows){
+  const body = qs("#combinedStudentsBody");
+  if(!body) return;
+  const data = classAnalysisData(rows, "Combined Classes");
+  if(!data.students.length){
+    body.innerHTML = `<div class="combined-empty">Choose at least one period to see combined analysis.</div>`;
+    return;
+  }
+  const fsCls = data.growth.fs==null ? "" : data.growth.fs>0 ? "up" : data.growth.fs<0 ? "down" : "";
+  const levelTable = data.levelLabels.length ? `
+    <table class="table" style="border-spacing:0 6px;">
+      <thead class="thead"><tr class="tr"><th class="th">Level</th><th class="th">Fall</th><th class="th">Winter</th><th class="th">Spring</th></tr></thead>
+      <tbody>
+        ${data.levelLabels.map(l=>`<tr class="tr"><td class="td"><strong>${escapeHtml(l)}</strong></td>${data.levels.map(set=>`<td class="td">${set.counts[l]||0}</td>`).join("")}</tr>`).join("")}
+      </tbody>
+    </table>` : `<div class="muted">No level data yet.</div>`;
+  body.innerHTML = `
+    <div class="analysis-grid">
+      <div class="analysis-stat"><div class="analysis-stat-label">Included students with F→S data</div><div class="analysis-stat-value">${data.fsDeltas.length}/${data.students.length}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Avg Fall → Spring growth</div><div class="analysis-stat-value ${fsCls}">${escapeHtml(data.growth.fs==null?"—":formatSigned(round1(data.growth.fs)))}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Improved / declined / same</div><div class="analysis-stat-value"><span class="up">${data.improved}</span> / <span class="down">${data.declined}</span> / ${data.same}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Typical / stretch met</div><div class="analysis-stat-value">${data.typicalMet}/${data.typicalWithGoal || 0} · ${data.stretchMet}/${data.stretchWithGoal || 0}</div></div>
+    </div>
+    <div class="analysis-panels">
+      <div class="analysis-panel wide">
+        <h4>Combined average score progression</h4>
+        <div class="analysis-note">Average diagnostic score across the selected periods.</div>
+        <canvas id="classAvgChart" class="chart" width="900" height="230"></canvas>
+      </div>
+      <div class="analysis-panel">
+        <h4>Fall → Spring movement categories</h4>
+        <div class="analysis-note">Groups included students by meaningful overall movement.</div>
+        <canvas id="classMovementChart" class="chart" width="900" height="230"></canvas>
+      </div>
+      <div class="analysis-panel">
+        <h4>Goal completion</h4>
+        <div class="analysis-note">Counts included students who have a goal entered and a latest diagnostic score.</div>
+        <canvas id="classGoalChart" class="chart" width="900" height="230"></canvas>
+      </div>
+      <div class="analysis-panel">
+        <h4>Top growth</h4>
+        <div class="analysis-list">${analysisListRows(data.topGrowth, "No Fall→Spring growth data yet.")}</div>
+      </div>
+      <div class="analysis-panel">
+        <h4>Biggest concerns</h4>
+        <div class="analysis-note">Uses the same concern rules as Class Analysis and includes each student’s period.</div>
+        <div class="analysis-list">${analysisListRows(data.concerns, "No students currently flagged by the concern rules.")}</div>
+      </div>
+      <div class="analysis-panel wide">
+        <h4>Reading level distribution</h4>
+        <div class="analysis-note">How many included students are in each entered level for Fall, Winter, and Spring.</div>
+        ${levelTable}
+      </div>
+    </div>`;
+  setTimeout(()=>drawClassAnalysisCharts(data),0);
+}
+
+function renderCombinedStudents(){
+  renderCombinedPeriodPicker();
+  const body = qs("#combinedStudentsBody");
+  const search = qs("#combinedSearch");
+  if(search){
+    search.value = state.combinedSearch || "";
+    search.style.display = state.combinedView === "analysis" ? "none" : "";
+  }
+  const panel = qs("#combinedPeriodPanel");
+  if(panel) panel.classList.toggle("open", !!state.combinedPickerOpen);
+  const summary = qs("#combinedPeriodSummary");
+  if(summary){
+    const selectedCount = (state.combinedClassIds || []).length;
+    summary.textContent = `${selectedCount}/${state.classes.length} periods included`;
+  }
+  qsa(".combined-view-tab").forEach(btn=>btn.classList.toggle("active", btn.dataset.combinedView === state.combinedView));
+  let rows = combinedRows();
+  if(state.combinedView === "analysis"){
+    renderCombinedAnalysis(rows);
+    return;
+  }
+  const q = (state.combinedSearch || "").toLowerCase().trim();
+  if(q){
+    rows = rows.filter(({cls,stu})=>`${fmtName(stu)} ${cls.name||""}`.toLowerCase().includes(q));
+  }
+  const {key, dir} = state.combinedSort || {key:"name", dir:1};
+  rows.sort((a,b)=>{
+    const va = combinedSortValue(a,key), vb = combinedSortValue(b,key);
+    if(va<vb) return -1*dir;
+    if(va>vb) return 1*dir;
+    return fmtName(a.stu).localeCompare(fmtName(b.stu));
+  });
+  if(!rows.length){
+    body.innerHTML = `<div class="combined-empty">No students match the current period selection/search.</div>`;
+    return;
+  }
+  const header = (label, sortKey)=>`<th class="th">${escapeHtml(label)} <span class="combined-sort" data-sort="${escapeHtml(sortKey)}">↕</span></th>`;
+  body.innerHTML = `
+    <div class="analysis-grid">
+      <div class="analysis-stat"><div class="analysis-stat-label">Included periods</div><div class="analysis-stat-value">${state.combinedClassIds.length}/${state.classes.length}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Students shown</div><div class="analysis-stat-value">${rows.length}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Avg Fall → Spring</div><div class="analysis-stat-value">${escapeHtml(round1(average(rows.map(r=>deltaBetween(r.stu,"fall","spring")?.delta ?? null))) )}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Improved / declined / same</div><div class="analysis-stat-value"><span class="up">${rows.filter(r=>(deltaBetween(r.stu,"fall","spring")?.delta ?? null)>0).length}</span> / <span class="down">${rows.filter(r=>(deltaBetween(r.stu,"fall","spring")?.delta ?? null)<0).length}</span> / ${rows.filter(r=>(deltaBetween(r.stu,"fall","spring")?.delta ?? null)===0).length}</div></div>
+    </div>
+    <div class="combined-table-wrap">
+      <table class="table">
+        <thead class="thead"><tr class="tr">
+          ${header("Student", "name")}
+          ${header("Period", "period")}
+          ${header("Fall", "fall")}
+          ${header("Winter", "winter")}
+          ${header("Spring", "spring")}
+          ${header("F→W", "delta_fw")}
+          ${header("W→S", "delta_ws")}
+          ${header("F→S", "delta_fs")}
+          ${header("Typical", "typical")}
+          ${header("Stretch", "stretch")}
+        </tr></thead>
+        <tbody>
+          ${rows.map(({cls,stu})=>`
+            <tr class="tr">
+              <td class="td name-cell ${escapeHtml(nameStateClass(stu))}">
+                <div class="combined-name" data-class-id="${escapeHtml(cls.id)}" data-student-id="${escapeHtml(stu.id)}">${escapeHtml(fmtName(stu))}</div>
+              </td>
+              <td class="td"><div class="combined-period">${escapeHtml(cls.name || "Class")}</div></td>
+              <td class="td">${scoreCellHtml(stu,"fall")}</td>
+              <td class="td">${scoreCellHtml(stu,"winter")}</td>
+              <td class="td">${scoreCellHtml(stu,"spring")}</td>
+              <td class="td">${combinedDeltaHtml(deltaBetween(stu,"fall","winter")?.delta ?? null)}</td>
+              <td class="td">${combinedDeltaHtml(deltaBetween(stu,"winter","spring")?.delta ?? null)}</td>
+              <td class="td">${combinedDeltaHtml(deltaBetween(stu,"fall","spring")?.delta ?? null)}</td>
+              <td class="td">${stu.typicalGoal ?? "—"}</td>
+              <td class="td">${stu.stretchGoal ?? "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+  body.querySelectorAll(".combined-sort").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const sortKey = btn.dataset.sort;
+      if(state.combinedSort?.key===sortKey) state.combinedSort.dir *= -1;
+      else state.combinedSort = {key:sortKey, dir:1};
+      save(); renderCombinedStudents();
+    });
+  });
+  body.querySelectorAll(".combined-name[data-student-id]").forEach(name=>{
+    name.addEventListener("click", ()=>{
+      state.activeClassId = name.dataset.classId;
+      save();
+      renderClassTabs();
+      openStudentModal(name.dataset.studentId);
+    });
+  });
+}
+function bindCombinedControls(){
+  const search = qs("#combinedSearch");
+  if(search){
+    search.addEventListener("input", ()=>{ state.combinedSearch = search.value; save(); renderCombinedStudents(); });
+  }
+  const toggle = qs("#combinedPeriodToggle");
+  if(toggle){
+    toggle.addEventListener("click", ()=>{
+      state.combinedPickerOpen = !state.combinedPickerOpen;
+      save(); renderCombinedStudents();
+    });
+  }
+  qsa(".combined-view-tab").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      state.combinedView = btn.dataset.combinedView === "analysis" ? "analysis" : "students";
+      save(); renderCombinedStudents();
+    });
+  });
+  const all = qs("#combinedSelectAll");
+  if(all){ all.addEventListener("click", ()=>{ state.combinedClassIds = state.classes.map(c=>c.id); save(); renderCombinedStudents(); }); }
+  const clear = qs("#combinedClearAll");
+  if(clear){ clear.addEventListener("click", ()=>{ state.combinedClassIds = []; save(); renderCombinedStudents(); }); }
 }
 
 /* ===================== Tardies ===================== */
@@ -2517,6 +2819,7 @@ function openManageTabs(){
 
   list.appendChild(row("Diagnostics", state.tabsVisibility.diagnostics, ()=>{ state.tabsVisibility.diagnostics=!state.tabsVisibility.diagnostics; save(); renderAppNav(); }, false));
   list.appendChild(row("Class Analysis", state.tabsVisibility.analysis, ()=>{ state.tabsVisibility.analysis=!state.tabsVisibility.analysis; save(); renderAppNav(); }, false));
+  list.appendChild(row("Combined Students", state.tabsVisibility.combined, ()=>{ state.tabsVisibility.combined=!state.tabsVisibility.combined; save(); renderAppNav(); }, false));
   list.appendChild(row("Tardies", state.tabsVisibility.tardies, ()=>{ state.tabsVisibility.tardies=!state.tabsVisibility.tardies; save(); renderAppNav(); }, false));
 
   tabs.forEach((t)=>{
@@ -3763,6 +4066,7 @@ document.addEventListener("keydown",(ev)=>{
   if(ev.target.matches("input, textarea")) return;
   if(ev.key==="/"){ ev.preventDefault();
     if(state.activeScreen==="diagnostics") qs("#searchBox").focus();
+    else if(state.activeScreen==="combined") qs("#combinedSearch")?.focus();
     else if(state.activeScreen==="tardies") qs("#tardySearch").focus();
     else if(state.activeScreen.startsWith("custom:")) qs("#customSearch")?.focus();
     return;
@@ -3784,6 +4088,7 @@ document.addEventListener("keydown",(ev)=>{
 });
 
 /* ===================== Initial Render ===================== */
+bindCombinedControls();
 function renderAll(){
   document.body.setAttribute("data-theme", state.theme || "navy");
   renderClassTabs();
