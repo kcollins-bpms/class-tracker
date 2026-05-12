@@ -728,6 +728,43 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 }
 </style>
 
+
+<style id="analysis-upgrade-css">
+.story-card{
+  background:rgba(116,167,255,.10);
+  border:1px solid var(--panel-border);
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:12px;
+  font-size:14px;
+  line-height:1.45;
+}
+.chart-stat-sub{ margin-top:3px; font-size:11px; color:var(--muted); font-weight:700; }
+.analysis-grid{ display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; margin-bottom:12px; }
+.analysis-stat{ background:var(--field-bg); border:1px solid var(--panel-border); border-radius:14px; padding:12px; }
+.analysis-stat-label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:900; }
+.analysis-stat-value{ margin-top:4px; font-size:24px; font-weight:950; line-height:1.1; }
+.analysis-stat-value.up{ color:#7dff99; }
+.analysis-stat-value.down{ color:#ff9a9a; }
+.analysis-panels{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.analysis-panel{ background:rgba(255,255,255,.03); border:1px solid var(--panel-border); border-radius:14px; padding:12px; }
+.analysis-panel.wide{ grid-column:1 / -1; }
+.analysis-panel h4{ margin:0 0 4px; }
+.analysis-note{ color:var(--muted); font-size:12px; margin-bottom:10px; }
+.analysis-list{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.analysis-list-row{ display:flex; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:10px; background:var(--field-bg); border:1px solid var(--panel-border); }
+.analysis-list-name{ font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.analysis-list-value{ font-weight:900; white-space:nowrap; }
+.analysis-list-value.up{ color:#7dff99; }
+.analysis-list-value.down{ color:#ff9a9a; }
+@media (max-width:860px){
+  .analysis-grid{ grid-template-columns:1fr 1fr; }
+  .analysis-panels{ grid-template-columns:1fr; }
+  .analysis-panel.wide{ grid-column:auto; }
+}
+@media (max-width:520px){ .analysis-grid{ grid-template-columns:1fr; } }
+</style>
+
 </head>
 <body data-theme="navy">
   <div class="wrap">
@@ -810,6 +847,17 @@ a, .link, .btn.link{ color:var(--accent) !important; }
       </div>
 
       <div class="muted" style="margin-top:8px">Tip: Press <span class="kbd">Enter</span> or click away to save a score. Use <span class="kbd">←</span>/<span class="kbd">→</span> to move between inputs.</div>
+    </section>
+
+    <!-- CLASS ANALYSIS (built-in) -->
+    <section id="classAnalysis" class="card" aria-label="Class Analysis" style="display:none;">
+      <div class="toolbar">
+        <h3 style="margin:0">Class Analysis</h3>
+        <div class="spacer"></div>
+        <span id="analysisClassName" class="muted"></span>
+      </div>
+      <div class="divider"></div>
+      <div id="classAnalysisBody"></div>
     </section>
 
     <!-- TARDIES (built-in) -->
@@ -994,6 +1042,7 @@ Weasley, Ron"></textarea>
       <!-- Charts -->
       <div id="tab-ch" class="modal-section">
         <div id="chartSummary" class="chart-summary" aria-label="Student chart summary"></div>
+        <div id="chartStory" class="story-card"></div>
 
         <div class="chart-grid">
           <div class="chart-card wide">
@@ -1004,7 +1053,7 @@ Weasley, Ron"></textarea>
 
           <div class="chart-card">
             <div class="chart-title">Growth between tests</div>
-            <div class="chart-note">Positive bars show growth; negative bars show score drops.</div>
+            <div class="chart-note">Only neighboring tests are shown here. Overall Fall→Spring growth is shown in the summary cards above.</div>
             <canvas id="chartDeltas" class="chart" width="800" height="220"></canvas>
           </div>
 
@@ -1107,7 +1156,7 @@ const DEFAULT_DATA = {
   theme: "navy",
   showRemove: false,
   customTabs: [],
-  tabsVisibility: { diagnostics:true, tardies:true },
+  tabsVisibility: { diagnostics:true, analysis:true, tardies:true },
   customSort: {},
   _lastSavedAt: Date.now()
 };
@@ -1203,7 +1252,8 @@ function ensureState(state){
     try{ delete s.customTabs; }catch(_){ s.customTabs = undefined; }
   }
 
-  s.tabsVisibility ??= { diagnostics:true, tardies:true };
+  s.tabsVisibility ??= { diagnostics:true, analysis:true, tardies:true };
+  s.tabsVisibility.analysis ??= true;
   s.customSort ??= {};
   s._lastSavedAt ??= Date.now();
   return s;
@@ -1414,6 +1464,7 @@ function appTab(label, key){
 function renderAppNav(){
   appnav.innerHTML = "";
   if(state.tabsVisibility.diagnostics) appnav.appendChild(appTab("Diagnostics","diagnostics"));
+  if(state.tabsVisibility.analysis) appnav.appendChild(appTab("Class Analysis","analysis"));
   if(state.tabsVisibility.tardies) appnav.appendChild(appTab("Tardies","tardies"));
 
   // custom tabs (per-class)
@@ -1440,6 +1491,7 @@ function renderAppNav(){
 /* ===================== Screen Switch ===================== */
 function hideAllScreens(){
   qs("#diagnostics").style.display="none";
+  qs("#classAnalysis").style.display="none";
   qs("#tardies").style.display="none";
   qs("#settings").style.display="none";
   qsa("[data-custom-host]").forEach(el=> el.style.display="none");
@@ -1455,6 +1507,7 @@ function applyScreen(){
   hideAllScreens();
   const k = state.activeScreen;
   if(k==="diagnostics"){ qs("#diagnostics").style.display=""; renderDiagnostics(); updateActiveNav(); return; }
+  if(k==="analysis"){ qs("#classAnalysis").style.display=""; renderClassAnalysis(); updateActiveNav(); return; }
   if(k==="tardies"){ qs("#tardies").style.display=""; renderTardies(); updateActiveNav(); return; }
   if(k==="settings"){ qs("#settings").style.display=""; renderThemeChips(); updateActiveNav(); return; }
   if(k.startsWith("custom:")){
@@ -1774,6 +1827,191 @@ function focusNextScoreInput(current, dir){
   const idx = inputs.indexOf(current);
   const next = inputs[idx+dir];
   if(next){ next.focus(); next.select(); }
+}
+
+
+/* ===================== Class Analysis ===================== */
+function latestScoreForAnalysis(stu){
+  const spring = scoreValue(stu,"spring");
+  const winter = scoreValue(stu,"winter");
+  const fall = scoreValue(stu,"fall");
+  if(spring!=null) return {key:"spring", label:"Spring", score:spring};
+  if(winter!=null) return {key:"winter", label:"Winter", score:winter};
+  if(fall!=null) return {key:"fall", label:"Fall", score:fall};
+  return null;
+}
+function average(nums){
+  const vals = nums.filter(v=>v!=null && !Number.isNaN(Number(v))).map(Number);
+  if(!vals.length) return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+function round1(n){ return n==null ? "—" : (Math.round(n*10)/10).toString(); }
+function classAnalysisData(){
+  const cls = getActiveClass();
+  const students = (cls.students || []);
+  const fallAvg = average(students.map(s=>scoreValue(s,"fall")));
+  const winterAvg = average(students.map(s=>scoreValue(s,"winter")));
+  const springAvg = average(students.map(s=>scoreValue(s,"spring")));
+  const fwAvg = average(students.map(s=>deltaBetween(s,"fall","winter")?.delta ?? null));
+  const wsAvg = average(students.map(s=>deltaBetween(s,"winter","spring")?.delta ?? null));
+  const fsDeltas = students.map(s=>({student:s, delta:deltaBetween(s,"fall","spring")?.delta ?? null})).filter(x=>x.delta!=null);
+  const fsAvg = average(fsDeltas.map(x=>x.delta));
+  const improved = fsDeltas.filter(x=>x.delta>0).length;
+  const declined = fsDeltas.filter(x=>x.delta<0).length;
+  const same = fsDeltas.filter(x=>x.delta===0).length;
+  const typicalMet = students.filter(s=>{ const latest=latestScoreForAnalysis(s); return latest && s.typicalGoal!=null && latest.score>=Number(s.typicalGoal); }).length;
+  const stretchMet = students.filter(s=>{ const latest=latestScoreForAnalysis(s); return latest && s.stretchGoal!=null && latest.score>=Number(s.stretchGoal); }).length;
+  const typicalWithGoal = students.filter(s=>s.typicalGoal!=null && latestScoreForAnalysis(s)).length;
+  const stretchWithGoal = students.filter(s=>s.stretchGoal!=null && latestScoreForAnalysis(s)).length;
+  const topGrowth = [...fsDeltas].sort((a,b)=>b.delta-a.delta).slice(0,5);
+  const concerns = [...fsDeltas].sort((a,b)=>a.delta-b.delta).slice(0,5);
+  const movement = [
+    {label:"Big gain", count:fsDeltas.filter(x=>x.delta>=15).length},
+    {label:"Moderate gain", count:fsDeltas.filter(x=>x.delta>=5 && x.delta<15).length},
+    {label:"Flat", count:fsDeltas.filter(x=>x.delta>-5 && x.delta<5).length},
+    {label:"Moderate drop", count:fsDeltas.filter(x=>x.delta<=-5 && x.delta>-15).length},
+    {label:"Big drop", count:fsDeltas.filter(x=>x.delta<=-15).length}
+  ];
+  const levels = ["fall","winter","spring"].map(key=>{
+    const counts = {};
+    students.forEach(st=>{
+      const label = (st[key]?.level || "").trim() || "—";
+      counts[label] = (counts[label]||0)+1;
+    });
+    return {key, label:key[0].toUpperCase()+key.slice(1), counts};
+  });
+  const levelLabels = Array.from(new Set(levels.flatMap(x=>Object.keys(x.counts)))).sort((a,b)=>{
+    if(a==="—") return 1; if(b==="—") return -1; return a.localeCompare(b, undefined, {numeric:true});
+  });
+  return {cls, students, averages:{fall:fallAvg,winter:winterAvg,spring:springAvg}, growth:{fw:fwAvg,ws:wsAvg,fs:fsAvg}, fsDeltas, improved, declined, same, typicalMet, stretchMet, typicalWithGoal, stretchWithGoal, topGrowth, concerns, movement, levels, levelLabels};
+}
+function analysisListRows(items, emptyText){
+  if(!items.length) return `<div class="muted">${escapeHtml(emptyText)}</div>`;
+  return items.map(x=>`
+    <div class="analysis-list-row">
+      <span class="analysis-list-name">${escapeHtml(fmtName(x.student))}</span>
+      <span class="analysis-list-value ${x.delta>0?"up":x.delta<0?"down":""}">${escapeHtml(formatSigned(x.delta))}</span>
+    </div>
+  `).join("");
+}
+function renderClassAnalysis(){
+  const data = classAnalysisData();
+  const body = qs("#classAnalysisBody");
+  const label = qs("#analysisClassName");
+  if(label) label.textContent = data.cls?.name || "Current class";
+  if(!body) return;
+  if(!data.students.length){
+    body.innerHTML = `<p class="muted">Add students and diagnostic scores to see class analysis.</p>`;
+    return;
+  }
+  const fsCls = data.growth.fs==null ? "" : data.growth.fs>0 ? "up" : data.growth.fs<0 ? "down" : "";
+  const levelTable = data.levelLabels.length ? `
+    <table class="table" style="border-spacing:0 6px;">
+      <thead class="thead"><tr class="tr"><th class="th">Level</th><th class="th">Fall</th><th class="th">Winter</th><th class="th">Spring</th></tr></thead>
+      <tbody>
+        ${data.levelLabels.map(l=>`<tr class="tr"><td class="td"><strong>${escapeHtml(l)}</strong></td>${data.levels.map(set=>`<td class="td">${set.counts[l]||0}</td>`).join("")}</tr>`).join("")}
+      </tbody>
+    </table>` : `<div class="muted">No level data yet.</div>`;
+  body.innerHTML = `
+    <div class="analysis-grid">
+      <div class="analysis-stat"><div class="analysis-stat-label">Students with F→S data</div><div class="analysis-stat-value">${data.fsDeltas.length}/${data.students.length}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Avg Fall → Spring growth</div><div class="analysis-stat-value ${fsCls}">${escapeHtml(data.growth.fs==null?"—":formatSigned(round1(data.growth.fs)))}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Improved / declined / same</div><div class="analysis-stat-value"><span class="up">${data.improved}</span> / <span class="down">${data.declined}</span> / ${data.same}</div></div>
+      <div class="analysis-stat"><div class="analysis-stat-label">Typical / stretch met</div><div class="analysis-stat-value">${data.typicalMet}/${data.typicalWithGoal || 0} · ${data.stretchMet}/${data.stretchWithGoal || 0}</div></div>
+    </div>
+    <div class="analysis-panels">
+      <div class="analysis-panel wide">
+        <h4>Class average score progression</h4>
+        <div class="analysis-note">Average diagnostic score by testing window.</div>
+        <canvas id="classAvgChart" class="chart" width="900" height="230"></canvas>
+      </div>
+      <div class="analysis-panel">
+        <h4>Fall → Spring movement categories</h4>
+        <div class="analysis-note">Groups students by meaningful overall movement.</div>
+        <canvas id="classMovementChart" class="chart" width="900" height="230"></canvas>
+      </div>
+      <div class="analysis-panel">
+        <h4>Goal completion</h4>
+        <div class="analysis-note">Counts students who have a goal entered and a latest diagnostic score.</div>
+        <canvas id="classGoalChart" class="chart" width="900" height="230"></canvas>
+      </div>
+      <div class="analysis-panel">
+        <h4>Top growth</h4>
+        <div class="analysis-list">${analysisListRows(data.topGrowth, "No Fall→Spring growth data yet.")}</div>
+      </div>
+      <div class="analysis-panel">
+        <h4>Biggest concerns</h4>
+        <div class="analysis-list">${analysisListRows(data.concerns, "No Fall→Spring growth data yet.")}</div>
+      </div>
+      <div class="analysis-panel wide">
+        <h4>Reading level distribution</h4>
+        <div class="analysis-note">How many students are in each entered level for Fall, Winter, and Spring.</div>
+        ${levelTable}
+      </div>
+    </div>`;
+  setTimeout(()=>drawClassAnalysisCharts(data),0);
+}
+function drawBarChart(ctx, rows, opts={}){
+  const w=ctx.__cssW||900, h=ctx.__cssH||230;
+  const left=110, right=22, top=20, bottom=30;
+  const max = Math.max(1, ...rows.map(r=>Number(r.value)||0));
+  const rowH = (h-top-bottom)/Math.max(1,rows.length);
+  ctx.font="12px ui-sans-serif";
+  rows.forEach((r,i)=>{
+    const y = top + i*rowH + rowH*.18;
+    const bh = Math.max(8,rowH*.48);
+    ctx.fillStyle = chartMutedColor();
+    ctx.textAlign="right";
+    ctx.fillText(r.label, left-10, y+bh*.75);
+    ctx.fillStyle = "rgba(120,150,210,.25)";
+    ctx.fillRect(left, y, w-left-right, bh);
+    ctx.fillStyle = r.color || "#7db4ff";
+    const bw = (Number(r.value)||0)/max*(w-left-right);
+    ctx.fillRect(left, y, bw, bh);
+    ctx.fillStyle = chartTextColor();
+    ctx.textAlign="left";
+    ctx.fillText(String(r.value), left + Math.min(bw+8,w-left-right-18), y+bh*.75);
+  });
+  ctx.textAlign="left";
+}
+function drawClassAnalysisCharts(data){
+  const avgCanvas = qs("#classAvgChart");
+  if(avgCanvas){
+    const ctx = clearCanvas(avgCanvas); const w=ctx.__cssW, h=ctx.__cssH;
+    const labels=["Fall","Winter","Spring"];
+    const vals=[data.averages.fall,data.averages.winter,data.averages.spring];
+    if(!vals.some(v=>v!=null)){ drawEmptyChart(ctx,"Enter class diagnostic scores to see averages"); }
+    else{
+      const range=niceRange(vals);
+      const pts=mapSeries(vals,w,h,range.min,range.max);
+      ctx.strokeStyle="rgba(120,150,210,.35)"; ctx.lineWidth=1; ctx.beginPath();
+      for(let i=0;i<labels.length;i++){ const x=50+(i/Math.max(1,labels.length-1))*(w-68); ctx.moveTo(x,18); ctx.lineTo(x,h-34); }
+      for(let i=0;i<=2;i++){ const y=18+i*((h-52)/2); ctx.moveTo(50,y); ctx.lineTo(w-18,y); }
+      ctx.stroke();
+      drawLine(ctx, pts.filter(Boolean), "#7db4ff", 3); drawDots(ctx, pts.filter(Boolean), "#7db4ff");
+      ctx.font="12px ui-sans-serif"; ctx.textAlign="center";
+      pts.forEach((p,i)=>{ const x=50+(i/Math.max(1,labels.length-1))*(w-68); ctx.fillStyle=chartMutedColor(); ctx.fillText(labels[i],x,h-10); if(p){ ctx.fillStyle=chartTextColor(); ctx.fillText(round1(vals[i]),p.x,Math.max(14,p.y-9)); }});
+      ctx.textAlign="left";
+    }
+  }
+  const moveCanvas = qs("#classMovementChart");
+  if(moveCanvas){
+    const ctx=clearCanvas(moveCanvas);
+    if(!data.fsDeltas.length) drawEmptyChart(ctx,"Enter Fall and Spring scores to see movement categories");
+    else drawBarChart(ctx, data.movement.map(r=>({label:r.label,value:r.count,color:r.label.includes("drop")?"#ef4444":r.label==="Flat"?"#cbd6ff":"#2dd36f"})));
+  }
+  const goalCanvas = qs("#classGoalChart");
+  if(goalCanvas){
+    const ctx=clearCanvas(goalCanvas);
+    const rows=[
+      {label:"Typical met", value:data.typicalMet, color:"#2dd36f"},
+      {label:"Typical not yet", value:Math.max(0,(data.typicalWithGoal||0)-data.typicalMet), color:"#facc15"},
+      {label:"Stretch met", value:data.stretchMet, color:"#2dd36f"},
+      {label:"Stretch not yet", value:Math.max(0,(data.stretchWithGoal||0)-data.stretchMet), color:"#facc15"}
+    ];
+    if(!(data.typicalWithGoal || data.stretchWithGoal)) drawEmptyChart(ctx,"Enter goals and scores to see goal completion");
+    else drawBarChart(ctx, rows);
+  }
 }
 
 /* ===================== Tardies ===================== */
@@ -2231,6 +2469,7 @@ function openManageTabs(){
   }
 
   list.appendChild(row("Diagnostics", state.tabsVisibility.diagnostics, ()=>{ state.tabsVisibility.diagnostics=!state.tabsVisibility.diagnostics; save(); renderAppNav(); }, false));
+  list.appendChild(row("Class Analysis", state.tabsVisibility.analysis, ()=>{ state.tabsVisibility.analysis=!state.tabsVisibility.analysis; save(); renderAppNav(); }, false));
   list.appendChild(row("Tardies", state.tabsVisibility.tardies, ()=>{ state.tabsVisibility.tardies=!state.tabsVisibility.tardies; save(); renderAppNav(); }, false));
 
   tabs.forEach((t)=>{
@@ -3232,23 +3471,69 @@ function drawGoalLine(ctx, value, label, range, color, dash=[6,6]){
   ctx.font="12px ui-sans-serif";
   ctx.fillText(label, w-104, Math.max(14, p.y-5));
 }
+function scoreValue(s, key){
+  const v = s?.[key]?.score;
+  return (v==null || v==="" || Number.isNaN(Number(v))) ? null : Number(v);
+}
+function formatSigned(n){
+  if(n==null || Number.isNaN(Number(n))) return "—";
+  return `${Number(n)>0?"+":""}${Number(n)}`;
+}
+function studentDiagnosticPoints(s){
+  return [
+    {key:"fall", label:"Fall", score:scoreValue(s,"fall")},
+    {key:"winter", label:"Winter", score:scoreValue(s,"winter")},
+    {key:"spring", label:"Spring", score:scoreValue(s,"spring")}
+  ].filter(p=>p.score!=null);
+}
+function bestGrowthWindow(s){
+  const windows = [
+    {label:"Fall → Winter", delta:deltaBetween(s,"fall","winter")?.delta ?? null},
+    {label:"Winter → Spring", delta:deltaBetween(s,"winter","spring")?.delta ?? null}
+  ].filter(w=>w.delta!=null);
+  if(!windows.length) return null;
+  return windows.reduce((best,w)=> w.delta>best.delta ? w : best, windows[0]);
+}
+function studentProgressStory(s){
+  const fw = deltaBetween(s,"fall","winter")?.delta ?? null;
+  const ws = deltaBetween(s,"winter","spring")?.delta ?? null;
+  const fs = deltaBetween(s,"fall","spring")?.delta ?? null;
+  if(fw==null && ws==null && fs==null) return "Enter at least two diagnostic scores to generate a progress story.";
+  const phrase = (n)=> n>0 ? `improved by ${n}` : n<0 ? `dropped by ${Math.abs(n)}` : "stayed the same";
+  const parts = [];
+  if(fw!=null) parts.push(`Fall to Winter: ${phrase(fw)}.`);
+  if(ws!=null) parts.push(`Winter to Spring: ${phrase(ws)}.`);
+  if(fs!=null){
+    const end = fs>0 ? `ended Spring ${fs} points above Fall.` : fs<0 ? `ended Spring ${Math.abs(fs)} points below Fall.` : "ended Spring exactly where they started in Fall.";
+    parts.push(`Overall, this student ${end}`);
+  }
+  return parts.join(" ");
+}
 function renderChartSummary(s){
   const host = qs("#chartSummary");
+  const story = qs("#chartStory");
+  if(story) story.textContent = studentProgressStory(s);
   if(!host) return;
   const d = deltaBetween(s,"fall","spring");
   const latestKey = latestVisibleKey(s);
-  const latestScore = latestKey ? s[latestKey]?.score : null;
+  const latestScore = latestKey ? scoreValue(s,latestKey) : null;
   const gap = growthNeeded(s);
+  const points = studentDiagnosticPoints(s);
+  const high = points.length ? points.reduce((a,b)=> b.score>a.score ? b : a, points[0]) : null;
+  const low = points.length ? points.reduce((a,b)=> b.score<a.score ? b : a, points[0]) : null;
+  const best = bestGrowthWindow(s);
+  const goalStatus = metStatus(s);
   const items = [
-    {label:"Fall → Spring", value:d ? `${d.delta>0?"+":""}${d.delta}` : "—", cls:d ? (d.delta>0?"up":d.delta<0?"down":"same") : ""},
-    {label:"Latest score", value:latestScore ?? "—", cls:""},
-    {label:"Typical gap", value:gap.t==null ? "—" : gap.t, cls:gap.t===0 ? "up" : ""},
-    {label:"Stretch gap", value:gap.s==null ? "—" : gap.s, cls:gap.s===0 ? "up" : ""}
+    {label:"Overall Fall → Spring", value:d ? formatSigned(d.delta) : "—", sub:d ? `${d.from} → ${d.to}` : "Needs Fall + Spring", cls:d ? (d.delta>0?"up":d.delta<0?"down":"same") : ""},
+    {label:"Goal status", value:`T: ${goalStatus.t?"Met":"—"}  S: ${goalStatus.s?"Met":"—"}`, sub:`Typical gap: ${gap.t==null?"—":gap.t} • Stretch gap: ${gap.s==null?"—":gap.s}`, cls:(goalStatus.t||goalStatus.s)?"up":""},
+    {label:"Highest / lowest", value:high ? `${high.label}: ${high.score}` : "—", sub:low ? `Lowest: ${low.label} ${low.score}` : "Needs scores", cls:""},
+    {label:"Best growth window", value:best ? `${formatSigned(best.delta)}` : "—", sub:best ? best.label : "Needs two tests", cls:best ? (best.delta>0?"up":best.delta<0?"down":"same") : ""}
   ];
   host.innerHTML = items.map(item=>`
     <div class="chart-stat">
       <div class="chart-stat-label">${escapeHtml(item.label)}</div>
       <div class="chart-stat-value ${item.cls||""}">${escapeHtml(item.value)}</div>
+      <div class="chart-stat-sub">${escapeHtml(item.sub||"")}</div>
     </div>
   `).join("");
 }
@@ -3295,11 +3580,10 @@ function drawChartsForStudent(s){
   // Delta chart
   const c2 = qs("#chartDeltas"), ctx2 = clearCanvas(c2);
   const w2 = ctx2.__cssW, h2 = ctx2.__cssH;
-  const pairs = [
+  const pairs = (show6 ? [["6th→Fall", deltaBetween(s,"spring6","fall")?.delta ?? null]] : []).concat([
     ["Fall→Winter", deltaBetween(s,"fall","winter")?.delta ?? null],
-    ["Winter→Spring", deltaBetween(s,"winter","spring")?.delta ?? null],
-    ["Fall→Spring", deltaBetween(s,"fall","spring")?.delta ?? null]
-  ].concat(show6?[["6th→Fall", deltaBetween(s,"spring6","fall")?.delta ?? null]]:[]);
+    ["Winter→Spring", deltaBetween(s,"winter","spring")?.delta ?? null]
+  ]);
   const vals = pairs.map(p=>p[1]).filter(v=>v!=null);
   const maxAbs = Math.max(10, ...vals.map(v=>Math.abs(v)));
   const zeroY = Math.round(h2/2);
