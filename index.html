@@ -754,6 +754,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .analysis-list{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
 .analysis-list-row{ display:flex; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:10px; background:var(--field-bg); border:1px solid var(--panel-border); }
 .analysis-list-name{ font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.analysis-list-name small{ display:block; margin-top:2px; font-size:11px; font-weight:700; color:var(--muted); }
 .analysis-list-value{ font-weight:900; white-space:nowrap; }
 .analysis-list-value.up{ color:#7dff99; }
 .analysis-list-value.down{ color:#ff9a9a; }
@@ -1846,6 +1847,51 @@ function average(nums){
   return vals.reduce((a,b)=>a+b,0)/vals.length;
 }
 function round1(n){ return n==null ? "—" : (Math.round(n*10)/10).toString(); }
+function isOnOrAboveGradeLevel(entry){
+  const color = classForEntry(entry);
+  if(color==="lvl-green" || color==="lvl-dark-green") return true;
+  const level = (entry?.level || "").trim();
+  return ["Early 7", "Mid 7", "Late 7", "8"].includes(level);
+}
+function isHighStartingStudent(stu){
+  const fall = scoreValue(stu,"fall");
+  if(fall==null) return false;
+  if(isOnOrAboveGradeLevel(stu.fall)) return true;
+  if(stu.stretchGoal!=null && fall>=Number(stu.stretchGoal)) return true;
+  if(stu.typicalGoal!=null && fall>=Number(stu.typicalGoal) && isOnOrAboveGradeLevel(stu.fall)) return true;
+  return false;
+}
+function concernReason(stu, delta){
+  if(delta<=-15) return "Big drop";
+  if(delta<=-5) return "Dropped";
+  if(delta<0) return "Slight drop";
+  if(delta===0) return "Flat";
+  return "Low growth";
+}
+function concernScore(item){
+  const highStart = isHighStartingStudent(item.student);
+  if(item.delta<=-5) return item.delta - 100;
+  if(highStart) return 9999;
+  return item.delta;
+}
+function buildConcernList(fsDeltas){
+  return fsDeltas
+    .map(item=>({
+      ...item,
+      highStart:isHighStartingStudent(item.student),
+      reason:concernReason(item.student, item.delta)
+    }))
+    .filter(item=>{
+      // Meaningful drops should always stay visible, even for students who started high.
+      if(item.delta<=-5) return true;
+      // Students who started already high should not be flagged just because they had little room to grow.
+      if(item.highStart) return false;
+      // For everyone else, flat/slight/limited Fall→Spring movement can be worth a closer look.
+      return item.delta<5;
+    })
+    .sort((a,b)=>concernScore(a)-concernScore(b) || fmtName(a.student).localeCompare(fmtName(b.student)))
+    .slice(0,5);
+}
 function classAnalysisData(){
   const cls = getActiveClass();
   const students = (cls.students || []);
@@ -1864,7 +1910,7 @@ function classAnalysisData(){
   const typicalWithGoal = students.filter(s=>s.typicalGoal!=null && latestScoreForAnalysis(s)).length;
   const stretchWithGoal = students.filter(s=>s.stretchGoal!=null && latestScoreForAnalysis(s)).length;
   const topGrowth = [...fsDeltas].sort((a,b)=>b.delta-a.delta).slice(0,5);
-  const concerns = [...fsDeltas].sort((a,b)=>a.delta-b.delta).slice(0,5);
+  const concerns = buildConcernList(fsDeltas);
   const movement = [
     {label:"Big gain", count:fsDeltas.filter(x=>x.delta>=15).length},
     {label:"Moderate gain", count:fsDeltas.filter(x=>x.delta>=5 && x.delta<15).length},
@@ -1889,7 +1935,7 @@ function analysisListRows(items, emptyText){
   if(!items.length) return `<div class="muted">${escapeHtml(emptyText)}</div>`;
   return items.map(x=>`
     <div class="analysis-list-row">
-      <span class="analysis-list-name">${escapeHtml(fmtName(x.student))}</span>
+      <span class="analysis-list-name">${escapeHtml(fmtName(x.student))}${x.reason ? `<small>${escapeHtml(x.reason)}</small>` : ""}</span>
       <span class="analysis-list-value ${x.delta>0?"up":x.delta<0?"down":""}">${escapeHtml(formatSigned(x.delta))}</span>
     </div>
   `).join("");
@@ -1941,7 +1987,8 @@ function renderClassAnalysis(){
       </div>
       <div class="analysis-panel">
         <h4>Biggest concerns</h4>
-        <div class="analysis-list">${analysisListRows(data.concerns, "No Fall→Spring growth data yet.")}</div>
+        <div class="analysis-note">Flags meaningful drops and limited growth, but does not penalize students who started already high unless they dropped noticeably.</div>
+        <div class="analysis-list">${analysisListRows(data.concerns, "No students currently flagged by the concern rules.")}</div>
       </div>
       <div class="analysis-panel wide">
         <h4>Reading level distribution</h4>
