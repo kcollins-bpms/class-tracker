@@ -772,6 +772,10 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .combined-table-wrap{ overflow:auto; border-radius:14px; }
 .combined-name{ font-weight:900; cursor:pointer; }
 .combined-period{ font-size:12px; color:var(--muted); font-weight:800; margin-top:2px; }
+.combined-name-wrap{ display:flex; align-items:center; gap:8px; }
+.combined-rank-badge{ flex:0 0 auto; min-width:24px; padding:1px 5px; border-radius:7px; background:transparent; border:1px solid var(--panel-border); color:var(--muted); font-size:11px; font-weight:800; text-align:center; }
+.rank-col{ width:34px; min-width:34px; max-width:34px; text-align:center !important; padding-left:4px !important; padding-right:4px !important; }
+.rank-cell{ width:auto; min-width:22px; text-align:center; font-weight:850; color:var(--muted); background:transparent; border:none; border-radius:0; padding:0 2px; display:inline-block; font-size:12px; line-height:1.2; font-variant-numeric:tabular-nums; }
 .combined-score{ white-space:nowrap; }
 .combined-delta{ font-weight:950; }
 .combined-delta.up{ color:#7dff99; }
@@ -818,6 +822,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
         </label>
 
         <input id="searchBox" class="search" placeholder="Search students  ( / )" />
+        <button id="rankToggle" class="btn">Show Numbers</button>
         <div class="spacer"></div>
 
         <!-- Columns Gear -->
@@ -841,6 +846,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
         <table class="table">
           <thead class="thead">
             <tr class="tr">
+              <th class="th rank-col">#</th>
               <th class="th">Student <span class="sort" data-sort="name">↕</span></th>
 
               <th class="th spring6col">Spring (6th) <span class="sort" data-sort="spring6">↕</span></th>
@@ -888,6 +894,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
       <div class="toolbar">
         <h3 style="margin:0">Combined Students</h3>
         <button id="combinedPeriodToggle" class="btn">Choose Periods</button>
+        <button id="combinedRankToggle" class="btn">Show Numbers</button>
         <span id="combinedPeriodSummary" class="muted"></span>
         <div class="spacer"></div>
         <input id="combinedSearch" class="search" placeholder="Search all included students" />
@@ -1200,11 +1207,13 @@ const DEFAULT_DATA = {
   activeScreen: "diagnostics",
   showSpring6: false,
   nameFormat: "firstLast",
+  showRankNumbers: false,
   sort: { key:"name", dir:1 },
   combinedSort: { key:"name", dir:1 },
   combinedSearch: "",
   combinedView: "students",
   combinedPickerOpen: false,
+  combinedShowRankNumbers: false,
   combinedClassIds: [],
   search: "",
   theme: "navy",
@@ -1294,6 +1303,8 @@ function ensureState(state){
   s.combinedSearch ??= "";
   s.combinedView = s.combinedView === "analysis" ? "analysis" : "students";
   s.combinedPickerOpen = !!s.combinedPickerOpen;
+  s.showRankNumbers ??= !!s.combinedShowRankNumbers;
+  s.combinedShowRankNumbers = !!s.showRankNumbers;
   s.combinedClassIds = Array.isArray(s.combinedClassIds) ? s.combinedClassIds.filter(id=>s.classes.some(c=>c.id===id)) : [];
   if(!s.combinedClassIds.length) s.combinedClassIds = s.classes.map(c=>c.id);
   s.search ??= "";
@@ -1671,6 +1682,9 @@ function renderDiagnostics(){
   qs("#toggleSpring6").checked = !!state.showSpring6;
   qs("#nameFormat").value = state.nameFormat;
   qs("#searchBox").value = state.search || "";
+  const rankBtn = qs("#rankToggle");
+  if(rankBtn) rankBtn.textContent = state.showRankNumbers ? "Hide Numbers" : "Show Numbers";
+  qsa(".rank-col").forEach(el=> el.style.display = state.showRankNumbers ? "" : "none");
 
   // Dropped students button
   const droppedBtn = qs("#droppedBtn");
@@ -1735,8 +1749,18 @@ function renderDiagnostics(){
 
   // rows
   studentsBody.innerHTML = "";
-  for(const s of filtered){
+  for(const [rankIndex, s] of filtered.entries()){
     const tr = document.createElement("tr"); tr.className="tr";
+
+    if(state.showRankNumbers){
+      const tdRank = document.createElement("td");
+      tdRank.className = "td rank-col";
+      const rank = document.createElement("span");
+      rank.className = "rank-cell";
+      rank.textContent = String(rankIndex + 1);
+      tdRank.appendChild(rank);
+      tr.appendChild(tdRank);
+    }
 
     // Name
     const tdName = document.createElement("td");
@@ -2253,6 +2277,11 @@ function renderCombinedStudents(){
     search.value = state.combinedSearch || "";
     search.style.display = state.combinedView === "analysis" ? "none" : "";
   }
+  const rankToggle = qs("#combinedRankToggle");
+  if(rankToggle){
+    rankToggle.textContent = state.showRankNumbers ? "Hide Numbers" : "Show Numbers";
+    rankToggle.style.display = state.combinedView === "analysis" ? "none" : "";
+  }
   const panel = qs("#combinedPeriodPanel");
   if(panel) panel.classList.toggle("open", !!state.combinedPickerOpen);
   const summary = qs("#combinedPeriodSummary");
@@ -2292,6 +2321,7 @@ function renderCombinedStudents(){
     <div class="combined-table-wrap">
       <table class="table">
         <thead class="thead"><tr class="tr">
+          ${state.showRankNumbers ? `<th class="th rank-col">#</th>` : ""}
           ${header("Student", "name")}
           ${header("Period", "period")}
           ${header("Fall", "fall")}
@@ -2304,10 +2334,13 @@ function renderCombinedStudents(){
           ${header("Stretch", "stretch")}
         </tr></thead>
         <tbody>
-          ${rows.map(({cls,stu})=>`
+          ${rows.map(({cls,stu}, index)=>`
             <tr class="tr">
+              ${state.showRankNumbers ? `<td class="td rank-col"><span class="rank-cell">${index + 1}</span></td>` : ""}
               <td class="td name-cell ${escapeHtml(nameStateClass(stu))}">
-                <div class="combined-name" data-class-id="${escapeHtml(cls.id)}" data-student-id="${escapeHtml(stu.id)}">${escapeHtml(fmtName(stu))}</div>
+                <div class="combined-name-wrap">
+                  <div class="combined-name" data-class-id="${escapeHtml(cls.id)}" data-student-id="${escapeHtml(stu.id)}">${escapeHtml(fmtName(stu))}</div>
+                </div>
               </td>
               <td class="td"><div class="combined-period">${escapeHtml(cls.name || "Class")}</div></td>
               <td class="td">${scoreCellHtml(stu,"fall")}</td>
@@ -2349,6 +2382,16 @@ function bindCombinedControls(){
     toggle.addEventListener("click", ()=>{
       state.combinedPickerOpen = !state.combinedPickerOpen;
       save(); renderCombinedStudents();
+    });
+  }
+  const rankToggle = qs("#combinedRankToggle");
+  if(rankToggle){
+    rankToggle.addEventListener("click", ()=>{
+      state.showRankNumbers = !state.showRankNumbers;
+      state.combinedShowRankNumbers = state.showRankNumbers;
+      save();
+      renderCombinedStudents();
+      if(state.activeScreen === "diagnostics") renderDiagnostics();
     });
   }
   qsa(".combined-view-tab").forEach(btn=>{
@@ -4041,6 +4084,7 @@ qs("#toggleSpring6").addEventListener("change", e=>{ state.showSpring6 = e.targe
 qs("#nameFormat").addEventListener("change", e=>{ state.nameFormat = e.target.value; save(); renderAll(); });
 qs("#searchBox").addEventListener("input", e=>{ state.search = e.target.value; save(); renderDiagnostics(); });
 qs("#toggleRemove").addEventListener("click", ()=>{ state.showRemove = !state.showRemove; save(); renderDiagnostics(); });
+qs("#rankToggle")?.addEventListener("click", ()=>{ state.showRankNumbers = !state.showRankNumbers; state.combinedShowRankNumbers = state.showRankNumbers; save(); renderDiagnostics(); });
 
 qs("#resetTardies").addEventListener("click", ()=>{
   const cls = getActiveClass();
