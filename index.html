@@ -776,6 +776,35 @@ a, .link, .btn.link{ color:var(--accent) !important; }
 .combined-rank-badge{ flex:0 0 auto; min-width:24px; padding:1px 5px; border-radius:7px; background:transparent; border:1px solid var(--panel-border); color:var(--muted); font-size:11px; font-weight:800; text-align:center; }
 .rank-col{ width:34px; min-width:34px; max-width:34px; text-align:center !important; padding-left:4px !important; padding-right:4px !important; }
 .rank-cell{ width:auto; min-width:22px; text-align:center; font-weight:850; color:var(--muted); background:transparent; border:none; border-radius:0; padding:0 2px; display:inline-block; font-size:12px; line-height:1.2; font-variant-numeric:tabular-nums; }
+.rank-toggle-btn{
+  position:relative;
+  width:30px;
+  min-width:30px;
+  height:30px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:9px;
+  font-weight:950;
+  font-size:14px;
+  line-height:1;
+}
+.rank-toggle-btn.active{
+  background:var(--accent) !important;
+  border-color:#7db4ff !important;
+  color:#071027 !important;
+}
+.rank-toggle-btn::after{
+  content:"";
+  width:5px;
+  height:5px;
+  border-radius:999px;
+  background:transparent;
+  position:absolute;
+  transform:translate(9px,-9px);
+}
+.rank-toggle-btn.active::after{ background:transparent; }
 .combined-score{ white-space:nowrap; }
 .combined-delta{ font-weight:950; }
 .combined-delta.up{ color:#7dff99; }
@@ -822,7 +851,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
         </label>
 
         <input id="searchBox" class="search" placeholder="Search students  ( / )" />
-        <button id="rankToggle" class="btn">Show Numbers</button>
+        <button id="rankToggle" class="icon-btn rank-toggle-btn" title="Show/hide row numbers" aria-label="Show row numbers">#</button>
         <div class="spacer"></div>
 
         <!-- Columns Gear -->
@@ -894,7 +923,7 @@ a, .link, .btn.link{ color:var(--accent) !important; }
       <div class="toolbar">
         <h3 style="margin:0">Combined Students</h3>
         <button id="combinedPeriodToggle" class="btn">Choose Periods</button>
-        <button id="combinedRankToggle" class="btn">Show Numbers</button>
+        <button id="combinedRankToggle" class="icon-btn rank-toggle-btn" title="Show/hide row numbers" aria-label="Show row numbers">#</button>
         <span id="combinedPeriodSummary" class="muted"></span>
         <div class="spacer"></div>
         <input id="combinedSearch" class="search" placeholder="Search all included students" />
@@ -1683,7 +1712,12 @@ function renderDiagnostics(){
   qs("#nameFormat").value = state.nameFormat;
   qs("#searchBox").value = state.search || "";
   const rankBtn = qs("#rankToggle");
-  if(rankBtn) rankBtn.textContent = state.showRankNumbers ? "Hide Numbers" : "Show Numbers";
+  if(rankBtn){
+    rankBtn.textContent = "#";
+    rankBtn.title = state.showRankNumbers ? "Hide row numbers" : "Show row numbers";
+    rankBtn.setAttribute("aria-label", rankBtn.title);
+    rankBtn.classList.toggle("active", !!state.showRankNumbers);
+  }
   qsa(".rank-col").forEach(el=> el.style.display = state.showRankNumbers ? "" : "none");
 
   // Dropped students button
@@ -2279,7 +2313,10 @@ function renderCombinedStudents(){
   }
   const rankToggle = qs("#combinedRankToggle");
   if(rankToggle){
-    rankToggle.textContent = state.showRankNumbers ? "Hide Numbers" : "Show Numbers";
+    rankToggle.textContent = "#";
+    rankToggle.title = state.showRankNumbers ? "Hide row numbers" : "Show row numbers";
+    rankToggle.setAttribute("aria-label", rankToggle.title);
+    rankToggle.classList.toggle("active", !!state.showRankNumbers);
     rankToggle.style.display = state.combinedView === "analysis" ? "none" : "";
   }
   const panel = qs("#combinedPeriodPanel");
